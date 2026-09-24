@@ -1,8 +1,8 @@
 .env
-.venv/
-__pycache__/
-*.pyc
-.pytest_cache/
+node_modules/
+dist/
+.next/
+*.tsbuildinfo
 logs/
 evals/results/
 .claude/settings.local.json

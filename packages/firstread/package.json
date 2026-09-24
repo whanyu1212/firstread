@@ -1,0 +1,25 @@
+{
+  "name": "firstread",
+  "version": "0.1.0",
+  "description": "Per-turn self-harm risk audit for mental health companion agents, powered by Jev.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "eval": "tsx evals/run-eval.ts",
+    "demo": "tsx examples/chat-demo.ts"
+  },
+  "dependencies": {
+    "@typesafe-ai/sdk": "^0.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1"
+  }
+}
