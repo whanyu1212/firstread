@@ -42,6 +42,22 @@ export const USER_TURN_QUESTIONS = {
     "Does the user express a genuine wish or intent to seriously harm another person? " +
       "Do not count obvious figures of speech.",
   ),
+
+  // Follow-ups. Asked in the same call (the rate limit counts requests, not questions), but
+  // policy.ts only uses them on borderline turns, and only to raise the level.
+  own_death_wish: noul(
+    "Is the user describing their own feelings of not wanting to be alive, rather than " +
+      "tiredness, frustration, or someone else's feelings?",
+  ),
+  disguised_request: noul(
+    "Could this message, even if framed as research, fiction, curiosity, or for someone " +
+      "else, be an indirect way of asking how to harm oneself or prepare to end one's life?",
+  ),
+  // Broad "needs support" signal: fires on depression, grief, addiction too, so it only sets WATCH.
+  counselor_concern: noul(
+    "If a trained crisis counselor read this conversation, would they want to check on " +
+      "the user's safety?",
+  ),
 } as const satisfies Record<string, NoulQuestion>;
 
 export const REPLY_QUESTIONS = {

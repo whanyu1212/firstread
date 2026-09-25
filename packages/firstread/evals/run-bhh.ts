@@ -5,6 +5,7 @@
  *     pnpm eval:bhh                                   # validation split, human labels
  *     pnpm eval:bhh --split test --concurrency 8      # test split, gpt-4o-mini labels
  *     pnpm eval:bhh --limit 20                        # quick smoke run
+ *     pnpm eval:bhh --rpm 30                          # stay under a requests/minute limit
  *
  * The benchmark labels crisis *type*, not severity, so there's no single "expected level".
  * Headline numbers:
@@ -12,7 +13,8 @@
  *   - violent thoughts flagged: violent_thoughts cases reaching >= WATCH (harm_to_others)
  *   - false-alarm rate: no_crisis cases flagged at all (>= WATCH), and >= ELEVATED
  *   - out of scope: anxiety / substance / risk-taking flag rates, for information only
- * Latency is measured per Jev call. Use --concurrency 1 (the default) for clean numbers.
+ * Latency is measured per Jev call. Use --concurrency 1 (the default) for clean numbers, and
+ * --rpm to stay under your rate limit (30/min on AI Gateway's free tier) so retries don't skew it.
  */
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -56,11 +58,23 @@ const { values: args } = parseArgs({
     split: { type: "string", default: "validation" },
     limit: { type: "string" },
     concurrency: { type: "string", default: "1" },
+    rpm: { type: "string" },
   },
 });
 if (args.split !== "validation" && args.split !== "test") {
   throw new Error(`--split must be validation or test, got ${args.split}`);
 }
+
+/** A numeric flag, rejecting 0, negatives, NaN and Infinity (which would silently disable pacing). */
+function positiveNumber(flag: string, value: string): number {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) throw new Error(`--${flag} must be a number greater than 0, got ${value}`);
+  return n;
+}
+const limit = args.limit === undefined ? undefined : Math.ceil(positiveNumber("limit", args.limit));
+const concurrency = Math.ceil(positiveNumber("concurrency", args.concurrency));
+const rpm = args.rpm === undefined ? undefined : positiveNumber("rpm", args.rpm);
+const intervalMs = rpm ? 60_000 / rpm : 0;
 
 try {
   process.loadEnvFile(here("../../../.env"));
@@ -77,11 +91,22 @@ try {
 } catch {
   throw new Error(`evals/data/bhh-${args.split}.jsonl not found; run \`pnpm fetch:bhh\` first`);
 }
-if (args.limit) cases = cases.slice(0, Number(args.limit));
+if (limit) cases = cases.slice(0, limit);
 
 const guard = new FirstRead();
-const concurrency = Math.max(1, Number(args.concurrency));
-console.log(`${cases.length} ${args.split} cases (${cases[0]?.label_source} labels), concurrency ${concurrency}\n`);
+console.log(
+  `${cases.length} ${args.split} cases (${cases[0]?.label_source} labels), concurrency ${concurrency}` +
+    `${rpm ? `, at most ${rpm} req/min` : ""}\n`,
+);
+
+/** Space out request starts across all workers; the wait isn't counted as latency. */
+let nextSlot = 0;
+async function pace() {
+  const now = performance.now();
+  const wait = nextSlot - now;
+  nextSlot = Math.max(now, nextSlot) + intervalMs;
+  if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+}
 
 async function runCase(c: BhhCase): Promise<Row> {
   const base = { id: c.id, label: c.label, source: c.source, chars: c.text.length };
@@ -98,6 +123,7 @@ const rows: Row[] = [];
 let next = 0;
 async function worker() {
   for (let c = cases[next++]; c; c = cases[next++]) {
+    await pace();
     const row = await runCase(c);
     rows.push(row);
     if (rows.length % 25 === 0 || rows.length === cases.length) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assessLevel, decideAction, escalate } from "../src/policy";
+import { assessLevel, decideAction, escalate, noisyOr } from "../src/policy";
 import type { ReplySignals, UserSignals } from "../src/questions";
 
 const QUIET_USER: UserSignals = {
@@ -10,6 +10,9 @@ const QUIET_USER: UserSignals = {
   intent: 0,
   imminent: 0,
   harm_to_others: 0,
+  own_death_wish: 0,
+  disguised_request: 0,
+  counselor_concern: 0,
 };
 const GOOD_REPLY: ReplySignals = {
   enables_harm: 0,
@@ -28,6 +31,34 @@ describe("assessLevel", () => {
   it("intent is CRISIS", () => expect(assessLevel(user({ intent: 0.3 }))).toBe("CRISIS"));
   it("plan plus means is CRISIS", () =>
     expect(assessLevel(user({ plan: 0.4, means: 0.4 }))).toBe("CRISIS"));
+});
+
+describe("noisyOr", () => {
+  it("is 0 with no signals", () => expect(noisyOr(user())).toBe(0));
+  it("adds up weak signals", () =>
+    expect(noisyOr(user({ ideation: 0.25, self_harm: 0.15, plan: 0.1 }))).toBeCloseTo(1 - 0.75 * 0.85 * 0.9));
+  it("ignores follow-ups and harm to others", () =>
+    expect(noisyOr(user({ counselor_concern: 0.9, harm_to_others: 0.9 }))).toBe(0));
+});
+
+describe("follow-up questions", () => {
+  // Borderline: noisy-OR about 0.35, but no single signal reaches ELEVATED.
+  const borderline = { ideation: 0.25, self_harm: 0.14 };
+
+  it("raise a borderline turn when one confirms", () =>
+    expect(assessLevel(user({ ...borderline, disguised_request: 0.6 }))).toBe("ELEVATED"));
+  it("leave a borderline turn alone when none confirms", () =>
+    expect(assessLevel(user({ ...borderline, counselor_concern: 0.3 }))).toBe("WATCH"));
+  it("don't act on a turn with no real signals", () =>
+    expect(assessLevel(user({ ideation: 0.05, counselor_concern: 0.9 }))).toBe("NONE"));
+  it("only watch on counselor concern", () => {
+    // Borderline (noisy-OR about 0.23) with no single signal at WATCH.
+    const faint = { ideation: 0.1, self_harm: 0.1, plan: 0.05 };
+    expect(assessLevel(user({ ...faint, counselor_concern: 0.9 }))).toBe("WATCH");
+    expect(assessLevel(user(faint))).toBe("NONE");
+  });
+  it("never lower a clear signal", () =>
+    expect(assessLevel(user({ intent: 0.5, counselor_concern: 0 }))).toBe("CRISIS"));
 });
 
 describe("escalate", () => {
