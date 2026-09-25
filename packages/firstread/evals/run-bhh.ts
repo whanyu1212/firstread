@@ -65,6 +65,17 @@ if (args.split !== "validation" && args.split !== "test") {
   throw new Error(`--split must be validation or test, got ${args.split}`);
 }
 
+/** A numeric flag, rejecting 0, negatives, NaN and Infinity (which would silently disable pacing). */
+function positiveNumber(flag: string, value: string): number {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) throw new Error(`--${flag} must be a number greater than 0, got ${value}`);
+  return n;
+}
+const limit = args.limit === undefined ? undefined : Math.ceil(positiveNumber("limit", args.limit));
+const concurrency = Math.ceil(positiveNumber("concurrency", args.concurrency));
+const rpm = args.rpm === undefined ? undefined : positiveNumber("rpm", args.rpm);
+const intervalMs = rpm ? 60_000 / rpm : 0;
+
 try {
   process.loadEnvFile(here("../../../.env"));
 } catch {
@@ -80,14 +91,12 @@ try {
 } catch {
   throw new Error(`evals/data/bhh-${args.split}.jsonl not found; run \`pnpm fetch:bhh\` first`);
 }
-if (args.limit) cases = cases.slice(0, Number(args.limit));
+if (limit) cases = cases.slice(0, limit);
 
 const guard = new FirstRead();
-const concurrency = Math.max(1, Number(args.concurrency));
-const intervalMs = args.rpm ? 60_000 / Number(args.rpm) : 0;
 console.log(
   `${cases.length} ${args.split} cases (${cases[0]?.label_source} labels), concurrency ${concurrency}` +
-    `${args.rpm ? `, at most ${args.rpm} req/min` : ""}\n`,
+    `${rpm ? `, at most ${rpm} req/min` : ""}\n`,
 );
 
 /** Space out request starts across all workers; the wait isn't counted as latency. */
