@@ -33,6 +33,8 @@ cp .env.example .env        # add your AI_GATEWAY_API_KEY (or TYPESAFE_API_KEY)
 pnpm install
 pnpm test                   # policy + wiring tests, no API key needed
 pnpm eval                   # run the test conversations against Jev
+pnpm fetch:bhh              # download the Between Help and Harm benchmark (CC-BY-NC-4.0)
+pnpm eval:bhh               # score it: recall, false alarms, latency
 pnpm demo                   # terminal chat
 ```
 

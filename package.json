@@ -9,6 +9,9 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "eval": "pnpm --filter firstread eval",
+    "fetch:bhh": "pnpm --filter firstread fetch:bhh",
+    "eval:bhh": "pnpm --filter firstread eval:bhh",
+    "probe:limits": "pnpm --filter firstread probe:limits",
     "demo": "pnpm --filter firstread demo"
   }
 }

@@ -4,5 +4,6 @@ dist/
 .next/
 *.tsbuildinfo
 logs/
-evals/results/
+**/evals/results/
+**/evals/data/
 .claude/settings.local.json
