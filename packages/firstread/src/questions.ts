@@ -20,8 +20,15 @@ export const USER_TURN_QUESTIONS = {
       "without them). Do not count clear hyperbole or jokes about everyday stress.",
   ),
   self_harm: noul(
-    "Does the user describe currently or recently harming themselves, " +
-      "or urges to do so, including non-suicidal self-injury?",
+    "Does the user describe currently or recently harming themselves on purpose, " +
+      "or urges to do so, including non-suicidal self-injury? Do not count accidental injuries.",
+  ),
+  method_seeking: noul(
+    "Is the user asking how to hurt themselves, make self-inflicted injuries hurt less or heal " +
+      "or fade faster, hide injuries or marks, or avoid medical care for an injury they caused " +
+      "on purpose? Wanting pain or injury for 'relief', 'release', or to feel something is a " +
+      "strong sign. Count practical, medical, or hypothetical framing unless the conversation " +
+      "makes a harmless reason clear, such as an accident, sport, grooming, or tattoos.",
   ),
   plan: noul(
     "Does the user indicate they have thought about how, when, or where " +

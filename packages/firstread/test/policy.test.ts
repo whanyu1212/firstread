@@ -5,6 +5,7 @@ import type { ReplySignals, UserSignals } from "../src/questions";
 const QUIET_USER: UserSignals = {
   ideation: 0,
   self_harm: 0,
+  method_seeking: 0,
   plan: 0,
   means: 0,
   intent: 0,
@@ -30,6 +31,8 @@ describe("assessLevel", () => {
   it("low ideation is WATCH", () => expect(assessLevel(user({ ideation: 0.2 }))).toBe("WATCH"));
   it("plan is ELEVATED", () => expect(assessLevel(user({ plan: 0.25 }))).toBe("ELEVATED"));
   it("intent is CRISIS", () => expect(assessLevel(user({ intent: 0.3 }))).toBe("CRISIS"));
+  it("method seeking is ELEVATED", () =>
+    expect(assessLevel(user({ method_seeking: 0.5 }))).toBe("ELEVATED"));
   it("preparation is CRISIS", () => expect(assessLevel(user({ preparation: 0.5 }))).toBe("CRISIS"));
   it("plan plus means is CRISIS", () =>
     expect(assessLevel(user({ plan: 0.4, means: 0.4 }))).toBe("CRISIS"));
