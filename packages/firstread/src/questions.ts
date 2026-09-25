@@ -34,6 +34,14 @@ export const USER_TURN_QUESTIONS = {
     "Does the user indicate they intend to act on thoughts of ending their life " +
       "or harming themselves, including goodbye-style messages or giving things away?",
   ),
+  preparation: noul(
+    "Does the user describe preparations that could be for ending their life, such as " +
+      "gathering or saving up means, writing goodbye letters, giving away belongings or pets, " +
+      "saying goodbye, or putting their affairs in order? Count indirect statements (e.g. " +
+      "wanting to make things easier for family, going through with 'my plan') unless the " +
+      "conversation makes a harmless reason clear, such as moving, travel, a new job, or " +
+        "routine life admin like making a will, insurance, or decluttering.",
+  ),
   imminent: noul(
     "Does the user indicate they may act to harm themselves soon, " +
       "such as today or tonight?",
