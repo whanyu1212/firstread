@@ -17,6 +17,13 @@ companion LLM ──► draft ──► reply check ──► send | replace | e
 - **replace**: the draft is swapped for a safe reply that points to support.
 - **escalate**: crisis reply goes out immediately and a human reviewer is alerted.
 
+The user check starts as soon as the message arrives (`guard.startTurn()`), so it runs
+while the companion writes its draft; `finish(draft)` adds the reply check. Both must answer
+within 3s of the draft being ready. If Jev is slow, rate-limited or down, FirstRead **fails
+closed**: the draft is not sent, and the user gets a reply matched to the risk level already
+known (a gentle holding reply, the support reply, or the crisis reply). Those turns are marked
+in `audit.failures`; re-check them later with `guard.recheck()`.
+
 ## Scope
 
 FirstRead flags risk and routes conversations to people. It does not diagnose,
@@ -33,6 +40,8 @@ cp .env.example .env        # add your AI_GATEWAY_API_KEY (or TYPESAFE_API_KEY)
 pnpm install
 pnpm test                   # policy + wiring tests, no API key needed
 pnpm eval                   # run the test conversations against Jev
+pnpm fetch:bhh              # download the Between Help and Harm benchmark (CC-BY-NC-4.0)
+pnpm eval:bhh               # score it: recall, false alarms, latency
 pnpm demo                   # terminal chat
 ```
 

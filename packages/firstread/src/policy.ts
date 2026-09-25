@@ -59,3 +59,11 @@ export function decideAction(level: RiskLevel, r: ReplySignals): Action {
   if (r.clinical_overreach >= 0.5) return "replace";
   return "send";
 }
+
+/**
+ * What to do when a check couldn't run in time. Fail closed: a draft is never sent unchecked.
+ * The sticky level is still known without Jev, so a conversation already in crisis still escalates.
+ */
+export function failClosedAction(level: RiskLevel): Action {
+  return atLeast(level, "CRISIS") ? "escalate" : "replace";
+}

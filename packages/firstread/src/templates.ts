@@ -20,3 +20,11 @@ export const CRISIS_REPLY =
   "I'm bringing in a person from our team, and I'd also really encourage you to reach " +
   "out to someone right now. " +
   RESOURCES;
+
+/**
+ * Sent when the safety checks couldn't run in time and nothing so far suggests risk.
+ * Deliberately low-key: most of these turns are ordinary, and the next turn is checked as usual.
+ */
+export const HOLDING_REPLY =
+  "I want to make sure I give you a thoughtful answer. " +
+  "Could you tell me a little more about what's on your mind?";

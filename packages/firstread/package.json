@@ -11,6 +11,9 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "eval": "tsx evals/run-eval.ts",
+    "fetch:bhh": "tsx evals/fetch-bhh.ts",
+    "eval:bhh": "tsx evals/run-bhh.ts",
+    "probe:limits": "tsx evals/probe-limits.ts",
     "demo": "tsx examples/chat-demo.ts"
   },
   "dependencies": {
