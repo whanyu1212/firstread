@@ -21,7 +21,7 @@ try {
   // fine if the key is already in the environment
 }
 
-function draftReply(_conv: Conversation, _userMsg: string): string {
+async function draftReply(_conv: Conversation, _userMsg: string): Promise<string> {
   // TODO: call your companion LLM here with conv.turns + userMsg.
   return "That sounds like a lot. Want to tell me more about what's been going on?";
 }
@@ -37,9 +37,11 @@ while (true) {
   const userMsg = (await rl.question("you> ")).trim();
   if (!userMsg) continue;
 
-  const audit = await guard.audit(conv, userMsg, draftReply(conv, userMsg));
+  // The user check starts now and runs while the companion writes its draft.
+  const pending = guard.startTurn(conv, userMsg);
+  const audit = await pending.finish(await draftReply(conv, userMsg));
 
-  const top = Object.entries(audit.userSignals)
+  const top = Object.entries(audit.userSignals ?? {})
     .sort(([, a], [, b]) => b - a)
     .slice(0, 3)
     .map(([k, v]) => `${k}=${v.toFixed(2)}`)
@@ -49,6 +51,17 @@ while (true) {
     console.log("  [!! human reviewer alerted]"); // TODO: wire to Slack / pager / dashboard
   }
   console.log(`bot> ${audit.reply}\n`);
-
   appendFileSync(`${LOG_DIR}/audit.jsonl`, JSON.stringify(audit) + "\n");
+
+  if (audit.failures.length > 0) {
+    const reasons = audit.failures.map((f) => `${f.check}:${f.reason}`).join(" ");
+    console.log(`  [failed closed (${reasons}); rechecking in the background]`);
+    // In production, put this on a job queue instead.
+    guard
+      .recheck(conv, audit.turn)
+      .then(({ raised, level }) => {
+        if (raised) console.log(`\n  [!! recheck raised risk to ${level}; human reviewer alerted]`);
+      })
+      .catch((err) => console.log(`\n  [recheck failed: ${err}]`));
+  }
 }
