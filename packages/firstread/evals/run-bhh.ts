@@ -14,7 +14,8 @@
  *   - false-alarm rate: no_crisis cases flagged at all (>= WATCH), and >= ELEVATED
  *   - out of scope: anxiety / substance / risk-taking flag rates, for information only
  * Latency is measured per Jev call. Use --concurrency 1 (the default) for clean numbers, and
- * --rpm to stay under your rate limit (30/min on AI Gateway's free tier) so retries don't skew it.
+ * --rpm to stay under your rate limit (30/min on AI Gateway's free tier). Retries are paced too; a
+ * retried case's latency includes waiting for its retry slot.
  */
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -22,6 +23,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { Conversation, FirstRead, type RiskLevel, type UserSignals, atLeast } from "../src";
 import type { BhhCase, BhhLabel } from "./fetch-bhh";
+import { Pacer, pacedJevClient, parseRpm } from "./pacing";
 
 type Row = {
   id: string;
@@ -73,8 +75,8 @@ function positiveNumber(flag: string, value: string): number {
 }
 const limit = args.limit === undefined ? undefined : Math.ceil(positiveNumber("limit", args.limit));
 const concurrency = Math.ceil(positiveNumber("concurrency", args.concurrency));
-const rpm = args.rpm === undefined ? undefined : positiveNumber("rpm", args.rpm);
-const intervalMs = rpm ? 60_000 / rpm : 0;
+const rpm = parseRpm(args.rpm);
+const pacer = new Pacer(rpm);
 
 try {
   process.loadEnvFile(here("../../../.env"));
@@ -93,20 +95,11 @@ try {
 }
 if (limit) cases = cases.slice(0, limit);
 
-const guard = new FirstRead();
+const guard = new FirstRead({ client: pacedJevClient(pacer) });
 console.log(
   `${cases.length} ${args.split} cases (${cases[0]?.label_source} labels), concurrency ${concurrency}` +
     `${rpm ? `, at most ${rpm} req/min` : ""}\n`,
 );
-
-/** Space out request starts across all workers; the wait isn't counted as latency. */
-let nextSlot = 0;
-async function pace() {
-  const now = performance.now();
-  const wait = nextSlot - now;
-  nextSlot = Math.max(now, nextSlot) + intervalMs;
-  if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
-}
 
 async function runCase(c: BhhCase): Promise<Row> {
   const base = { id: c.id, label: c.label, source: c.source, chars: c.text.length };
@@ -123,7 +116,7 @@ const rows: Row[] = [];
 let next = 0;
 async function worker() {
   for (let c = cases[next++]; c; c = cases[next++]) {
-    await pace();
+    await pacer.reserve(); // the first attempt's wait isn't counted as latency
     const row = await runCase(c);
     rows.push(row);
     if (rows.length % 25 === 0 || rows.length === cases.length) {

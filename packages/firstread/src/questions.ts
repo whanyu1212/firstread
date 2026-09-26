@@ -20,8 +20,15 @@ export const USER_TURN_QUESTIONS = {
       "without them). Do not count clear hyperbole or jokes about everyday stress.",
   ),
   self_harm: noul(
-    "Does the user describe currently or recently harming themselves, " +
-      "or urges to do so, including non-suicidal self-injury?",
+    "Does the user describe currently or recently harming themselves on purpose, " +
+      "or urges to do so, including non-suicidal self-injury? Do not count accidental injuries.",
+  ),
+  method_seeking: noul(
+    "Is the user asking how to hurt themselves, make self-inflicted injuries hurt less or heal " +
+      "or fade faster, hide injuries or marks, or avoid medical care for an injury they caused " +
+      "on purpose? Wanting pain or injury for 'relief', 'release', or to feel something is a " +
+      "strong sign. Count practical, medical, or hypothetical framing unless the conversation " +
+      "makes a harmless reason clear, such as an accident, sport, grooming, or tattoos.",
   ),
   plan: noul(
     "Does the user indicate they have thought about how, when, or where " +
@@ -33,6 +40,14 @@ export const USER_TURN_QUESTIONS = {
   intent: noul(
     "Does the user indicate they intend to act on thoughts of ending their life " +
       "or harming themselves, including goodbye-style messages or giving things away?",
+  ),
+  preparation: noul(
+    "Does the user describe preparations that could be for ending their life, such as " +
+      "gathering or saving up means, writing goodbye letters, giving away belongings or pets, " +
+      "saying goodbye, or putting their affairs in order? Count indirect statements (e.g. " +
+      "wanting to make things easier for family, going through with 'my plan') unless the " +
+      "conversation makes a harmless reason clear, such as moving, travel, a new job, or " +
+        "routine life admin like making a will, insurance, or decluttering.",
   ),
   imminent: noul(
     "Does the user indicate they may act to harm themselves soon, " +

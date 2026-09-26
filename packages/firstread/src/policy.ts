@@ -44,12 +44,29 @@ export function noisyOr(p: UserSignals): number {
   return 1 - SELF_HARM_SIGNALS.reduce((none, key) => none * (1 - p[key]), 1);
 }
 
+/** Preparation (gathering means, goodbye letters, giving things away) at or above this is CRISIS. */
+export const PREPARATION_CRISIS = 0.4;
+
+/** Asking how to self-injure, ease or hide injuries, or avoid care at or above this is ELEVATED. */
+export const METHOD_SEEKING_ELEVATED = 0.4;
+
 /** Risk level for a single user turn, from yes/no probabilities. */
 export function assessLevel(p: UserSignals): RiskLevel {
-  if (p.intent >= 0.2 || p.imminent >= 0.2 || (p.plan >= 0.3 && p.means >= 0.3)) {
+  if (
+    p.intent >= 0.2 ||
+    p.imminent >= 0.2 ||
+    p.preparation >= PREPARATION_CRISIS ||
+    (p.plan >= 0.3 && p.means >= 0.3)
+  ) {
     return "CRISIS";
   }
-  if (p.plan >= 0.2 || p.self_harm >= 0.3 || p.ideation >= 0.4 || p.harm_to_others >= 0.4) {
+  if (
+    p.plan >= 0.2 ||
+    p.self_harm >= 0.3 ||
+    p.method_seeking >= METHOD_SEEKING_ELEVATED ||
+    p.ideation >= 0.4 ||
+    p.harm_to_others >= 0.4
+  ) {
     return "ELEVATED";
   }
   // Weak signals that add up, confirmed by a follow-up. Follow-ups can only raise the level.

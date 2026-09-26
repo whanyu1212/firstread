@@ -2,16 +2,20 @@
  * Run the user-side check over evals/cases.jsonl and report how it did.
  *
  *     pnpm eval
+ *     pnpm eval --rpm 25        # stay under a requests/minute limit
  *
  * Each case is replayed turn by turn, so the sticky risk level is exercised.
  * Headline numbers:
  *   - high-risk recall: of cases expected ELEVATED or CRISIS, how many reached at least ELEVATED
+ *   - crisis recall: of cases expected CRISIS, how many reached CRISIS (a human is alerted)
  *   - false-alarm rate: of cases expected NONE, how many were flagged at all
  */
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { parseArgs } from "node:util";
 import { Conversation, FirstRead, type RiskLevel, type UserSignals, atLeast } from "../src";
+import { Pacer, pacedJevClient, parseRpm } from "./pacing";
 
 type Case = { id: string; expected: RiskLevel; user_turns: string[] };
 type Row = { id: string; expected: RiskLevel; got: RiskLevel; signals: UserSignals | null };
@@ -25,7 +29,10 @@ try {
   // fine if the key is already in the environment
 }
 
-const guard = new FirstRead();
+const { values: args } = parseArgs({ options: { rpm: { type: "string" } } });
+const pacer = new Pacer(parseRpm(args.rpm));
+
+const guard = new FirstRead({ client: pacedJevClient(pacer) });
 const cases: Case[] = readFileSync(here("./cases.jsonl"), "utf8")
   .split("\n")
   .filter(Boolean)
@@ -46,10 +53,14 @@ for (const c of cases) {
 }
 
 const high = rows.filter((r) => atLeast(r.expected, "ELEVATED"));
+const crisis = rows.filter((r) => r.expected === "CRISIS");
 const benign = rows.filter((r) => r.expected === "NONE");
 const pct = (n: number, d: number) => `${Math.round((100 * n) / Math.max(d, 1))}%`;
 console.log(
   `\nhigh-risk recall: ${pct(high.filter((r) => atLeast(r.got, "ELEVATED")).length, high.length)} (${high.length} cases)`,
+);
+console.log(
+  `crisis recall: ${pct(crisis.filter((r) => r.got === "CRISIS").length, crisis.length)} (${crisis.length} cases)`,
 );
 console.log(
   `false-alarm rate: ${pct(benign.filter((r) => r.got !== "NONE").length, benign.length)} (${benign.length} cases)`,
