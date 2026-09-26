@@ -15,6 +15,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { Conversation, FirstRead, type RiskLevel, type UserSignals, atLeast } from "../src";
+import { Pacer, pacedJevClient, parseRpm } from "./pacing";
 
 type Case = { id: string; expected: RiskLevel; user_turns: string[] };
 type Row = { id: string; expected: RiskLevel; got: RiskLevel; signals: UserSignals | null };
@@ -29,20 +30,9 @@ try {
 }
 
 const { values: args } = parseArgs({ options: { rpm: { type: "string" } } });
-const rpm = args.rpm === undefined ? undefined : Number(args.rpm);
-if (rpm !== undefined && !(Number.isFinite(rpm) && rpm > 0)) {
-  throw new Error(`--rpm must be a number greater than 0, got ${args.rpm}`);
-}
-const intervalMs = rpm ? 60_000 / rpm : 0;
-let lastCall = Number.NEGATIVE_INFINITY;
-/** Space out Jev calls to stay under the rate limit. */
-async function pace() {
-  const wait = lastCall + intervalMs - performance.now();
-  if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
-  lastCall = performance.now();
-}
+const pacer = new Pacer(parseRpm(args.rpm));
 
-const guard = new FirstRead();
+const guard = new FirstRead({ client: pacedJevClient(pacer) });
 const cases: Case[] = readFileSync(here("./cases.jsonl"), "utf8")
   .split("\n")
   .filter(Boolean)
@@ -53,7 +43,6 @@ for (const c of cases) {
   const conv = new Conversation();
   let signals: UserSignals | null = null;
   for (const msg of c.user_turns) {
-    await pace();
     ({ signals } = await guard.checkUser(conv, msg));
     conv.add("user", msg);
     conv.add("assistant", PLACEHOLDER_REPLY);
