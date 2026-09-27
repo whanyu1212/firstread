@@ -13,6 +13,7 @@
     "eval": "tsx evals/run-eval.ts",
     "fetch:bhh": "tsx evals/fetch-bhh.ts",
     "eval:bhh": "tsx evals/run-bhh.ts",
+    "compare:bhh": "tsx evals/compare-bhh.ts",
     "probe:limits": "tsx evals/probe-limits.ts",
     "demo": "tsx examples/chat-demo.ts"
   },
