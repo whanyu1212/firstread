@@ -60,8 +60,7 @@ function latestRuns(split: string): string[] {
     const client = f.match(new RegExp(`^bhh-${split}-(\\w+?)-\\d{4}-`))?.[1];
     if (client) latest.set(client, `${dir}/${f}`);
   }
-  // Jev first: it's the reference the baselines are compared against.
-  return [...latest.entries()].sort(([a], [b]) => (a === "jev" ? -1 : b === "jev" ? 1 : a.localeCompare(b))).map(([, f]) => f);
+  return [...latest.values()];
 }
 
 const score = (s: UserSignals) => Math.max(...SELF_HARM_KEYS.map((k) => s[k]));
@@ -97,6 +96,10 @@ const random = () => ((seed = (seed * 1664525 + 1013904223) % 2 ** 32) / 2 ** 32
 const files = positionals.length ? positionals : latestRuns(args.split!);
 if (files.length === 0) throw new Error(`no bhh-${args.split} results found; run \`pnpm eval:bhh\` first`);
 const runs = files.map(load);
+// Jev is the reference every baseline is compared against, whatever the argument order.
+const jev = runs.findIndex((r) => r.name === "jev");
+if (jev < 0) throw new Error("compare:bhh needs a Jev run to compare against; none of the files is one");
+runs.unshift(...runs.splice(jev, 1));
 
 // Only cases every run answered, so the comparison is paired.
 const shared = [...runs[0]!.rows.keys()].filter((id) => runs.every((r) => r.rows.get(id)?.signals));

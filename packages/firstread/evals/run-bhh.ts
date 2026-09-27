@@ -60,16 +60,32 @@ const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 
 const { values: args } = parseArgs({
   options: {
-    split: { type: "string", default: "validation" },
+    split: { type: "string" },
     limit: { type: "string" },
     concurrency: { type: "string", default: "1" },
     rpm: { type: "string" },
-    client: { type: "string", default: "jev" },
+    client: { type: "string" },
     retry: { type: "string" },
   },
 });
-if (args.split !== "validation" && args.split !== "test") {
-  throw new Error(`--split must be validation or test, got ${args.split}`);
+
+// --retry reruns an earlier run's errors with that run's own split and client, read from its
+// file name, so the merged results never mix clients or splits.
+const retryOf = args.retry?.match(/bhh-(\w+?)-(\w+?)-\d{4}-[^/]*\.jsonl$/);
+if (args.retry && !retryOf) {
+  throw new Error(`--retry needs a results file written by eval:bhh (bhh-<split>-<client>-<time>.jsonl), got ${args.retry}`);
+}
+for (const [flag, given, fromFile] of [
+  ["split", args.split, retryOf?.[1]],
+  ["client", args.client, retryOf?.[2]],
+] as const) {
+  if (given && fromFile && given !== fromFile) {
+    throw new Error(`--${flag} ${given} doesn't match the ${flag} of the --retry file (${fromFile})`);
+  }
+}
+const split = args.split ?? retryOf?.[1] ?? "validation";
+if (split !== "validation" && split !== "test") {
+  throw new Error(`--split must be validation or test, got ${split}`);
 }
 
 /** A numeric flag, rejecting 0, negatives, NaN and Infinity (which would silently disable pacing). */
@@ -82,7 +98,7 @@ const limit = args.limit === undefined ? undefined : Math.ceil(positiveNumber("l
 const concurrency = Math.ceil(positiveNumber("concurrency", args.concurrency));
 const rpm = parseRpm(args.rpm);
 const pacer = new Pacer(rpm);
-const client = parseClient(args.client);
+const client = parseClient(args.client ?? retryOf?.[2]);
 const usage = new Usage();
 
 try {
@@ -93,12 +109,12 @@ try {
 
 let cases: BhhCase[];
 try {
-  cases = readFileSync(here(`./data/bhh-${args.split}.jsonl`), "utf8")
+  cases = readFileSync(here(`./data/bhh-${split}.jsonl`), "utf8")
     .split("\n")
     .filter(Boolean)
     .map((line) => JSON.parse(line));
 } catch {
-  throw new Error(`evals/data/bhh-${args.split}.jsonl not found; run \`pnpm fetch:bhh\` first`);
+  throw new Error(`evals/data/bhh-${split}.jsonl not found; run \`pnpm fetch:bhh\` first`);
 }
 if (limit) cases = cases.slice(0, limit);
 
@@ -117,7 +133,7 @@ if (args.retry) {
 
 const guard = new FirstRead({ client: evalClient(client, pacer, usage) });
 console.log(
-  `${client}: ${cases.length} ${args.split} cases (${cases[0]?.label_source} labels), concurrency ${concurrency}` +
+  `${client}: ${cases.length} ${split} cases (${cases[0]?.label_source} labels), concurrency ${concurrency}` +
     `${rpm ? `, at most ${rpm} req/min` : ""}\n`,
 );
 
@@ -197,6 +213,6 @@ console.log(`\ncost: ${usage.summary(client)}`);
 
 const stamp = new Date().toISOString().replace(/[:.]/g, "-");
 mkdirSync(here("./results"), { recursive: true });
-const out = `bhh-${args.split}-${client}-${stamp}.jsonl`;
+const out = `bhh-${split}-${client}-${stamp}.jsonl`;
 writeFileSync(here(`./results/${out}`), rows.map((r) => JSON.stringify(r)).join("\n") + "\n");
 console.log(`\nper-case signals written to evals/results/${out}`);
