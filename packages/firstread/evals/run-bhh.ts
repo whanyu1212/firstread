@@ -6,6 +6,8 @@
  *     pnpm eval:bhh --split test --concurrency 8      # test split, gpt-4o-mini labels
  *     pnpm eval:bhh --limit 20                        # quick smoke run
  *     pnpm eval:bhh --rpm 30                          # stay under a requests/minute limit
+ *     pnpm eval:bhh --client luna                     # LLM baseline instead of Jev (see llm-client.ts)
+ *     pnpm eval:bhh --retry evals/results/<file>.jsonl  # rerun only that run's errors, merged in
  *
  * The benchmark labels crisis *type*, not severity, so there's no single "expected level".
  * Headline numbers:
@@ -13,9 +15,9 @@
  *   - violent thoughts flagged: violent_thoughts cases reaching >= WATCH (harm_to_others)
  *   - false-alarm rate: no_crisis cases flagged at all (>= WATCH), and >= ELEVATED
  *   - out of scope: anxiety / substance / risk-taking flag rates, for information only
- * Latency is measured per Jev call. Use --concurrency 1 (the default) for clean numbers, and
+ * Latency is measured per call. Use --concurrency 1 (the default) for clean numbers, and
  * --rpm to stay under your rate limit (30/min on AI Gateway's free tier). Retries are paced too; a
- * retried case's latency includes waiting for its retry slot.
+ * retried case's latency includes waiting for its retry slot. Compare runs with compare-bhh.ts.
  */
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -23,7 +25,8 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { Conversation, FirstRead, type RiskLevel, type UserSignals, atLeast } from "../src";
 import type { BhhCase, BhhLabel } from "./fetch-bhh";
-import { Pacer, pacedJevClient, parseRpm } from "./pacing";
+import { Usage, evalClient, parseClient } from "./llm-client";
+import { Pacer, parseRpm } from "./pacing";
 
 type Row = {
   id: string;
@@ -61,6 +64,8 @@ const { values: args } = parseArgs({
     limit: { type: "string" },
     concurrency: { type: "string", default: "1" },
     rpm: { type: "string" },
+    client: { type: "string", default: "jev" },
+    retry: { type: "string" },
   },
 });
 if (args.split !== "validation" && args.split !== "test") {
@@ -77,6 +82,8 @@ const limit = args.limit === undefined ? undefined : Math.ceil(positiveNumber("l
 const concurrency = Math.ceil(positiveNumber("concurrency", args.concurrency));
 const rpm = parseRpm(args.rpm);
 const pacer = new Pacer(rpm);
+const client = parseClient(args.client);
+const usage = new Usage();
 
 try {
   process.loadEnvFile(here("../../../.env"));
@@ -95,9 +102,22 @@ try {
 }
 if (limit) cases = cases.slice(0, limit);
 
-const guard = new FirstRead({ client: pacedJevClient(pacer) });
+// --retry: rerun only the cases that errored in an earlier run, and merge them back into it.
+const prior: Row[] = args.retry
+  ? readFileSync(args.retry, "utf8")
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => JSON.parse(line))
+  : [];
+if (args.retry) {
+  const failed = new Set(prior.filter((r) => r.error).map((r) => r.id));
+  cases = cases.filter((c) => failed.has(c.id));
+  console.log(`retrying ${cases.length} failed cases from ${args.retry}`);
+}
+
+const guard = new FirstRead({ client: evalClient(client, pacer, usage) });
 console.log(
-  `${cases.length} ${args.split} cases (${cases[0]?.label_source} labels), concurrency ${concurrency}` +
+  `${client}: ${cases.length} ${args.split} cases (${cases[0]?.label_source} labels), concurrency ${concurrency}` +
     `${rpm ? `, at most ${rpm} req/min` : ""}\n`,
 );
 
@@ -126,6 +146,10 @@ async function worker() {
 }
 await Promise.all(Array.from({ length: concurrency }, worker));
 console.log();
+if (prior.length) {
+  const redone = new Map(rows.map((r) => [r.id, r]));
+  rows.splice(0, rows.length, ...prior.map((r) => redone.get(r.id) ?? r));
+}
 
 const ok = rows.filter((r) => r.got !== null);
 const errors = rows.length - ok.length;
@@ -161,7 +185,7 @@ const latencyLine = (rs: Row[]) => {
   const f = (p: number) => `${Math.round(percentile(ms, p))}`.padStart(5);
   return `n=${String(ms.length).padStart(4)}  p50 ${f(0.5)}  p90 ${f(0.9)}  p99 ${f(0.99)}  max ${f(1)} ms`;
 };
-console.log(`\nlatency per Jev call${concurrency > 1 ? ` (concurrency ${concurrency}, may include queueing)` : ""}:`);
+console.log(`\nlatency per call${concurrency > 1 ? ` (concurrency ${concurrency}, may include queueing)` : ""}:`);
 console.log(`  all          ${latencyLine(ok)}`);
 let min = 0;
 for (const b of LENGTH_BUCKETS) {
@@ -169,9 +193,10 @@ for (const b of LENGTH_BUCKETS) {
   if (rs.length) console.log(`  ${b.name.padEnd(12)} ${latencyLine(rs)}`);
   min = b.max;
 }
+console.log(`\ncost: ${usage.summary(client)}`);
 
 const stamp = new Date().toISOString().replace(/[:.]/g, "-");
 mkdirSync(here("./results"), { recursive: true });
-const out = `bhh-${args.split}-${stamp}.jsonl`;
+const out = `bhh-${args.split}-${client}-${stamp}.jsonl`;
 writeFileSync(here(`./results/${out}`), rows.map((r) => JSON.stringify(r)).join("\n") + "\n");
 console.log(`\nper-case signals written to evals/results/${out}`);

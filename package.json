@@ -11,6 +11,7 @@
     "eval": "pnpm --filter firstread eval",
     "fetch:bhh": "pnpm --filter firstread fetch:bhh",
     "eval:bhh": "pnpm --filter firstread eval:bhh",
+    "compare:bhh": "pnpm --filter firstread compare:bhh",
     "probe:limits": "pnpm --filter firstread probe:limits",
     "demo": "pnpm --filter firstread demo"
   }

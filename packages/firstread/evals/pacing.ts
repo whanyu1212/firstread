@@ -1,13 +1,11 @@
 /**
- * Keep Jev requests under a requests/minute limit, retries included.
+ * Keep eval requests under a requests/minute limit, retries included.
  *
  * The SDK retries 429s and 5xxs on its own, and every retry is another request against the
  * limit. Pacing only the logical calls isn't enough: right at the limit, retries push over it
  * and cause more refusals. So the pacer is handed to the SDK as its `fetch`, and every HTTP
  * attempt takes a slot.
  */
-
-import { createJevClient, clientConfig, type JevClient } from "../src";
 
 export class Pacer {
   private readonly intervalMs: number;
@@ -42,11 +40,6 @@ export class Pacer {
     else await this.slot();
     return fetch(input, init);
   };
-}
-
-/** A Jev client whose every HTTP attempt, retries included, goes through `pacer`. */
-export function pacedJevClient(pacer: Pacer): JevClient {
-  return createJevClient({ ...clientConfig(), fetch: pacer.fetch });
 }
 
 /** Parse --rpm: undefined when absent; rejects 0, negatives, NaN and Infinity. */
