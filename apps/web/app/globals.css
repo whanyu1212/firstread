@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+/* Colour tokens. Dark by default: the deck is presented on a projector. */
+@theme {
+  --color-canvas: #0e1116;
+  --color-panel: #161b22;
+  --color-raised: #1f2630;
+  --color-line: #2b3340;
+  --color-ink: #e8edf3;
+  --color-muted: #9aa6b5;
+  --color-accent: #7cc4a8;
+  --color-on-accent: #0e1116;
+  --color-danger: #f28b82;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* Slide typography for MDX content. */
+.slide > h1 {
+  @apply mb-8 text-4xl font-semibold tracking-tight sm:text-6xl;
+}
+.slide > p {
+  @apply mb-4 text-xl leading-relaxed text-muted sm:text-2xl;
+}
+.slide > ul {
+  @apply space-y-4 text-xl sm:text-2xl;
+}
+.slide > ul > li {
+  @apply ml-6 list-disc marker:text-accent;
+}
+.slide > :is(p, ul) strong {
+  @apply font-semibold text-ink;
+}
+.slide > .eyebrow {
+  @apply mb-3 text-sm font-medium tracking-widest text-accent uppercase sm:text-base;
+}

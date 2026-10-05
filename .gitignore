@@ -7,3 +7,4 @@ logs/
 **/evals/results/
 **/evals/data/
 .claude/settings.local.json
+next-env.d.ts
