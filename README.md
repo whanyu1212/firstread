@@ -45,12 +45,13 @@ pnpm eval:bhh               # score it: recall, false alarms, latency
 pnpm eval:bhh --client luna # same questions on an LLM baseline (needs OPENAI_API_KEY)
 pnpm compare:bhh            # Jev vs the baselines: AUC, recall at matched false alarms, calibration
 pnpm demo                   # terminal chat
+pnpm dev                    # web app: the deck at /deck, the demo at /demo (needs OPENAI_API_KEY)
 ```
 
 ## Layout
 
 pnpm workspace. The library is framework-free so any companion app can use it;
-the Next.js demo app will live in `apps/`.
+the Next.js app in `apps/web` holds the presentation deck and the live demo.
 
 | Path | What it is |
 | --- | --- |
@@ -62,11 +63,13 @@ the Next.js demo app will live in `apps/`.
 | `packages/firstread/evals/` | Synthetic test conversations and the eval script |
 | `packages/firstread/evals/llm-client.ts` | Eval-only LLM baselines (gpt-6-luna, gpt-6-sol) behind the same interface as Jev |
 | `packages/firstread/examples/chat-demo.ts` | Terminal chat; plug your companion LLM into `draftReply()` |
+| `apps/web` | Next.js app: `/deck` (slides in `slides/*.mdx`) and `/demo` (companion chat, `app/api/chat`) |
 
 ## Next steps
 
 - [ ] Run the eval to get baseline numbers
 - [ ] Grow `evals/cases.jsonl` (sarcasm, lyrics, slow build-ups, non-English)
 - [ ] Tune thresholds in `policy.ts` for high-risk recall first, false alarms second
-- [ ] Next.js demo app in `apps/web` with AI SDK 7 `useChat` and a live FirstRead panel
+- [x] Next.js app in `apps/web` with AI SDK 7 `useChat`: deck and demo routes
+- [ ] Live FirstRead panel on the demo (HY-19)
 - [ ] Reviewer view for escalated conversations
