@@ -13,6 +13,22 @@ function isTyping(target: EventTarget | null): boolean {
   return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
 }
 
+/** A previous/next arrow. Past either end it's plain text, so it can't be focused or followed. */
+function StepLink({ to, total, label, children }: { to: number; total: number; label: string; children: ReactNode }) {
+  if (to < 1 || to > total) {
+    return (
+      <span aria-hidden="true" className="opacity-30">
+        {children}
+      </span>
+    );
+  }
+  return (
+    <Link href={`/deck/${to}`} aria-label={label} className="hover:text-ink">
+      {children}
+    </Link>
+  );
+}
+
 export function DeckShell({
   index,
   total,
@@ -54,23 +70,15 @@ export function DeckShell({
       <footer className="flex items-center justify-between gap-4 px-6 py-4 text-sm text-muted sm:px-12">
         <span className="truncate">FirstRead · {title}</span>
         <nav className="flex shrink-0 items-center gap-3" aria-label="Slides">
-          <Link
-            href={`/deck/${index - 1}`}
-            aria-disabled={index === 1}
-            className={index === 1 ? "pointer-events-none opacity-30" : "hover:text-ink"}
-          >
+          <StepLink to={index - 1} total={total} label="Previous slide">
             ←
-          </Link>
+          </StepLink>
           <span className="whitespace-nowrap tabular-nums">
             {index} / {total}
           </span>
-          <Link
-            href={`/deck/${index + 1}`}
-            aria-disabled={index === total}
-            className={index === total ? "pointer-events-none opacity-30" : "hover:text-ink"}
-          >
+          <StepLink to={index + 1} total={total} label="Next slide">
             →
-          </Link>
+          </StepLink>
           <Link href="/demo" className="ml-3 hover:text-ink">
             Demo
           </Link>
