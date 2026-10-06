@@ -54,6 +54,13 @@ export const PREPARATION_CRISIS = 0.4;
  */
 export const INTENT_CRISIS = 0.35;
 export const IMMINENT_CRISIS = 0.4;
+/**
+ * Below the CRISIS cutoffs, intent or imminence still counts: at or above these the turn is at
+ * least ELEVATED, so raising the CRISIS cutoffs changed how severe a turn is, not whether it's
+ * flagged. A veiled goodbye with nothing else firing (BHH test_001288: imminent 0.27) needs this.
+ */
+export const INTENT_ELEVATED = 0.2;
+export const IMMINENT_ELEVATED = 0.2;
 
 /** Asking how to self-injure, ease or hide injuries, or avoid care at or above this is ELEVATED. */
 export const METHOD_SEEKING_ELEVATED = 0.4;
@@ -69,6 +76,8 @@ export function assessLevel(p: UserSignals): RiskLevel {
     return "CRISIS";
   }
   if (
+    p.intent >= INTENT_ELEVATED ||
+    p.imminent >= IMMINENT_ELEVATED ||
     p.plan >= 0.2 ||
     p.self_harm >= 0.3 ||
     p.method_seeking >= METHOD_SEEKING_ELEVATED ||

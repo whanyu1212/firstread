@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { IMMINENT_CRISIS, INTENT_CRISIS, assessLevel, decideAction, escalate, noisyOr } from "../src/policy";
+import {
+  IMMINENT_CRISIS,
+  IMMINENT_ELEVATED,
+  INTENT_CRISIS,
+  INTENT_ELEVATED,
+  assessLevel,
+  decideAction,
+  escalate,
+  noisyOr,
+} from "../src/policy";
 import type { ReplySignals, UserSignals } from "../src/questions";
 
 const QUIET_USER: UserSignals = {
@@ -32,6 +41,12 @@ describe("assessLevel", () => {
   it("plan is ELEVATED", () => expect(assessLevel(user({ plan: 0.25 }))).toBe("ELEVATED"));
   it("intent is CRISIS", () => expect(assessLevel(user({ intent: INTENT_CRISIS }))).toBe("CRISIS"));
   it("imminence is CRISIS", () => expect(assessLevel(user({ imminent: IMMINENT_CRISIS }))).toBe("CRISIS"));
+  it("intent or imminence below the CRISIS cutoff is still ELEVATED", () => {
+    expect(assessLevel(user({ intent: INTENT_ELEVATED }))).toBe("ELEVATED");
+    expect(assessLevel(user({ intent: INTENT_CRISIS - 0.01 }))).toBe("ELEVATED");
+    expect(assessLevel(user({ imminent: IMMINENT_ELEVATED }))).toBe("ELEVATED");
+    expect(assessLevel(user({ imminent: IMMINENT_CRISIS - 0.01 }))).toBe("ELEVATED");
+  });
   it("strong ideation with faint intent and imminence is ELEVATED, not CRISIS", () =>
     // What Jev gives "i've been thinking about killing myself": no plan, no timing.
     expect(assessLevel(user({ ideation: 0.98, intent: 0.31, imminent: 0.28 }))).toBe("ELEVATED"));
