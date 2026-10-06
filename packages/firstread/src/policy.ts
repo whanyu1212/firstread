@@ -3,9 +3,8 @@
  *
  * Pure functions, no API calls, so they are easy to unit test and tune.
  *
- * All thresholds are placeholders: tune them on evals/ before trusting them.
- * They are deliberately low, because missing a real crisis costs far more than
- * a false alarm.
+ * Thresholds are tuned on evals/ (BHH, cases.jsonl, conversations.jsonl). They lean low,
+ * because missing a real crisis costs far more than a false alarm.
  */
 
 import type { ReplySignals, UserSignals } from "./questions";
@@ -47,20 +46,38 @@ export function noisyOr(p: UserSignals): number {
 /** Preparation (gathering means, goodbye letters, giving things away) at or above this is CRISIS. */
 export const PREPARATION_CRISIS = 0.4;
 
+/**
+ * Stated intent, or a sign of acting soon, at or above these is CRISIS. Jev gives both 0.2-0.36
+ * on strong ideation with no plan or timing ("i've been thinking about killing myself"), so at 0.2
+ * every such disclosure alerted a human. On the multi-turn dev conversations, these are the lowest
+ * values that stop that while every real crisis still escalated (intent 0.6-0.8, imminent 0.5-0.6).
+ */
+export const INTENT_CRISIS = 0.35;
+export const IMMINENT_CRISIS = 0.4;
+/**
+ * Below the CRISIS cutoffs, intent or imminence still counts: at or above these the turn is at
+ * least ELEVATED, so raising the CRISIS cutoffs changed how severe a turn is, not whether it's
+ * flagged. A veiled goodbye with nothing else firing (BHH test_001288: imminent 0.27) needs this.
+ */
+export const INTENT_ELEVATED = 0.2;
+export const IMMINENT_ELEVATED = 0.2;
+
 /** Asking how to self-injure, ease or hide injuries, or avoid care at or above this is ELEVATED. */
 export const METHOD_SEEKING_ELEVATED = 0.4;
 
 /** Risk level for a single user turn, from yes/no probabilities. */
 export function assessLevel(p: UserSignals): RiskLevel {
   if (
-    p.intent >= 0.2 ||
-    p.imminent >= 0.2 ||
+    p.intent >= INTENT_CRISIS ||
+    p.imminent >= IMMINENT_CRISIS ||
     p.preparation >= PREPARATION_CRISIS ||
     (p.plan >= 0.3 && p.means >= 0.3)
   ) {
     return "CRISIS";
   }
   if (
+    p.intent >= INTENT_ELEVATED ||
+    p.imminent >= IMMINENT_ELEVATED ||
     p.plan >= 0.2 ||
     p.self_harm >= 0.3 ||
     p.method_seeking >= METHOD_SEEKING_ELEVATED ||
