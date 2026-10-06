@@ -12,6 +12,8 @@
     "fetch:bhh": "pnpm --filter firstread fetch:bhh",
     "eval:bhh": "pnpm --filter firstread eval:bhh",
     "compare:bhh": "pnpm --filter firstread compare:bhh",
+    "eval:conversations": "pnpm --filter firstread eval:conversations",
+    "check:conversations": "pnpm --filter firstread check:conversations",
     "probe:limits": "pnpm --filter firstread probe:limits",
     "demo": "pnpm --filter firstread demo",
     "dev": "pnpm --filter web dev"

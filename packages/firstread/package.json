@@ -14,6 +14,8 @@
     "fetch:bhh": "tsx evals/fetch-bhh.ts",
     "eval:bhh": "tsx evals/run-bhh.ts",
     "compare:bhh": "tsx evals/compare-bhh.ts",
+    "eval:conversations": "tsx evals/run-conversations.ts",
+    "check:conversations": "tsx evals/check-conversations.ts",
     "probe:limits": "tsx evals/probe-limits.ts",
     "demo": "tsx examples/chat-demo.ts"
   },
