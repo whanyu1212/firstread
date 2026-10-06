@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assessLevel, decideAction, escalate, noisyOr } from "../src/policy";
+import { IMMINENT_CRISIS, INTENT_CRISIS, assessLevel, decideAction, escalate, noisyOr } from "../src/policy";
 import type { ReplySignals, UserSignals } from "../src/questions";
 
 const QUIET_USER: UserSignals = {
@@ -30,7 +30,11 @@ describe("assessLevel", () => {
   it("quiet turn is NONE", () => expect(assessLevel(user())).toBe("NONE"));
   it("low ideation is WATCH", () => expect(assessLevel(user({ ideation: 0.2 }))).toBe("WATCH"));
   it("plan is ELEVATED", () => expect(assessLevel(user({ plan: 0.25 }))).toBe("ELEVATED"));
-  it("intent is CRISIS", () => expect(assessLevel(user({ intent: 0.3 }))).toBe("CRISIS"));
+  it("intent is CRISIS", () => expect(assessLevel(user({ intent: INTENT_CRISIS }))).toBe("CRISIS"));
+  it("imminence is CRISIS", () => expect(assessLevel(user({ imminent: IMMINENT_CRISIS }))).toBe("CRISIS"));
+  it("strong ideation with faint intent and imminence is ELEVATED, not CRISIS", () =>
+    // What Jev gives "i've been thinking about killing myself": no plan, no timing.
+    expect(assessLevel(user({ ideation: 0.98, intent: 0.31, imminent: 0.28 }))).toBe("ELEVATED"));
   it("method seeking is ELEVATED", () =>
     expect(assessLevel(user({ method_seeking: 0.5 }))).toBe("ELEVATED"));
   it("preparation is CRISIS", () => expect(assessLevel(user({ preparation: 0.5 }))).toBe("CRISIS"));
