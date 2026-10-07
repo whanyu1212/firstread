@@ -14,6 +14,7 @@
     "compare:bhh": "pnpm --filter firstread compare:bhh",
     "eval:conversations": "pnpm --filter firstread eval:conversations",
     "check:conversations": "pnpm --filter firstread check:conversations",
+    "sweep:risk": "pnpm --filter firstread sweep:risk",
     "probe:limits": "pnpm --filter firstread probe:limits",
     "demo": "pnpm --filter firstread demo",
     "dev": "pnpm --filter web dev"

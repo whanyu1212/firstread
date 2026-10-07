@@ -15,14 +15,27 @@ export {
   RISK_LEVELS,
   assessLevel,
   atLeast,
+  crisisRoutes,
   decideAction,
   escalate,
   failClosedAction,
   rank,
 } from "./policy";
-export type { Action, RiskLevel } from "./policy";
+export type { Action, CrisisRoute, RiskLevel } from "./policy";
 export { REPLY_QUESTIONS, USER_TURN_QUESTIONS } from "./questions";
 export type { ReplySignals, UserSignals } from "./questions";
+export {
+  DEFAULT_RISK_CONFIG,
+  clearCrisis,
+  initialRisk,
+  ledgerOutsideWindow,
+  noteTurn,
+  raiseRisk,
+  resourcesDue,
+  resourcesGiven,
+  updateRisk,
+} from "./risk";
+export type { LedgerEntry, RiskChange, RiskConfig, RiskState } from "./risk";
 export { CRISIS_REPLY, DEFAULT_REPLIES, HOLDING_REPLY, RESOURCES, SAFE_REPLY, repliesFor } from "./templates";
 export type { Replies } from "./templates";
 export { INTERNATIONAL, SINGAPORE, formatResources, resourcesFor } from "./resources";

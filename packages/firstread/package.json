@@ -17,6 +17,7 @@
     "compare:bhh": "tsx evals/compare-bhh.ts",
     "eval:conversations": "tsx evals/run-conversations.ts",
     "check:conversations": "tsx evals/check-conversations.ts",
+    "sweep:risk": "tsx evals/sweep-risk.ts",
     "probe:limits": "tsx evals/probe-limits.ts",
     "demo": "tsx examples/chat-demo.ts"
   },
