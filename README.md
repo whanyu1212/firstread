@@ -59,11 +59,12 @@ the Next.js app in `apps/web` holds the presentation deck and the live demo.
 | `packages/firstread/src/policy.ts` | Thresholds: probabilities → risk level → action. Tune these. |
 | `packages/firstread/src/guard.ts` | `FirstRead` class: calls Jev, keeps the risk level sticky |
 | `packages/firstread/src/jev.ts` | Jev adapter on TypeSafe's SDK (`@typesafe-ai/sdk`), routed through AI Gateway |
-| `packages/firstread/src/templates.ts` | Fallback replies and crisis resources (localise these) |
+| `packages/firstread/src/templates.ts` | Fallback replies; `repliesFor("SG")` localises them from `resources.ts` |
 | `packages/firstread/evals/` | Synthetic test conversations and the eval script |
 | `packages/firstread/evals/llm-client.ts` | Eval-only LLM baselines (gpt-6-luna, gpt-6-sol) behind the same interface as Jev |
 | `packages/firstread/examples/chat-demo.ts` | Terminal chat; plug your companion LLM into `draftReply()` |
-| `apps/web` | Next.js app: `/deck` (slides in `slides/*.mdx`) and `/demo` (companion chat, `app/api/chat`) |
+| `apps/web` | Next.js app: `/deck` (slides in `slides/*.mdx`) and `/demo`, where a tool-using companion agent (`lib/companion.ts`, `lib/tools.ts`) chats through `app/api/chat` |
+| `packages/firstread/src/resources.ts` | Verified crisis lines by country (Singapore first), used by the fallback replies and the agent |
 
 ## Next steps
 
