@@ -42,7 +42,7 @@ const sig = (p: Partial<UserSignals> = {}): UserSignals => {
 /** Run a sequence of turns from a starting state. */
 function run(turns: Partial<UserSignals>[], start: RiskState = initialRisk(), config = DEFAULT_RISK_CONFIG): RiskState {
   return turns.reduce(
-    (state, p, i) => updateRisk(state, sig(p), { turn: i * 2, text: `message ${i + 1}` }, config),
+    (state, p, i) => updateRisk(state, sig(p), { text: `message ${i + 1}` }, config),
     start,
   );
 }
@@ -184,9 +184,14 @@ describe("support lines (part 4)", () => {
 describe("ledger (part 1)", () => {
   it("keeps messages that raised concern, capped, and knows which left the window", () => {
     const s = run([{ ideation: 0.2 }, {}, {}, {}, {}, {}]);
-    expect(s.ledger).toEqual([{ turn: 0, text: "message 1", level: "WATCH" }]);
-    expect(ledgerOutsideWindow(s, 12, 8)).toHaveLength(1);
-    expect(ledgerOutsideWindow(s, 6, 8)).toHaveLength(0);
+    expect(s.ledger).toEqual([{ turn: 1, text: "message 1", level: "WATCH" }]);
+    expect(ledgerOutsideWindow(s, 8)).toHaveLength(1); // 6 user turns in, turn 1 is outside the last 4
+    expect(ledgerOutsideWindow(run([{ ideation: 0.2 }, {}, {}]), 8)).toHaveLength(0);
+  });
+
+  it("numbers entries by user turn, so trimming the transcript doesn't stall them", () => {
+    const s = run([{}, {}, { ideation: 0.2 }]);
+    expect(s.ledger[0]?.turn).toBe(3);
     const many = run(Array(30).fill({ ideation: 0.2 }));
     expect(many.ledger).toHaveLength(DEFAULT_RISK_CONFIG.ledgerMax);
   });
@@ -216,6 +221,20 @@ describe("ledger (part 1)", () => {
     expect(last).toContain("there's a thought that keeps coming back");
     // Not repeated while it's still inside the window.
     expect(states[1]).not.toContain("EARLIER IN THIS CONVERSATION");
+  });
+});
+
+describe("rechecks", () => {
+  it("apply the same CRISIS context rule as a live turn", async () => {
+    // A failed turn, rechecked later, with a noisy plan-and-means reading and no self-harm context.
+    const noisy = { ...QUIET, plan: 0.5, means: 0.7, imminent: 0.51, latest_adds_risk: 0.7 };
+    const client: JevClient = { async ask(_s, q) { return Object.fromEntries(Object.keys(q).map((k) => [k, (noisy as Record<string, number>)[k] ?? 0])) as never; } };
+    const guard = new FirstRead({ client });
+    const conv = new Conversation();
+    conv.add("user", "launch my pc out the window");
+    conv.add("assistant", "ha");
+    const r = await guard.recheck(conv, 0);
+    expect(r.level).toBe("ELEVATED");
   });
 });
 

@@ -50,7 +50,7 @@ function evaluate(config: RiskConfig | null) {
     const levels: RiskLevel[] = signals.map((p, i) => {
       if (!config) return (sticky = escalate(sticky, assessLevel(p)));
       // Older runs predate asks_for_person; it doesn't affect the level.
-      state = updateRisk(state, { ...p, asks_for_person: p.asks_for_person ?? 0 }, { turn: i * 2, text: c.exchanges[i]!.user }, config);
+      state = updateRisk(state, { ...p, asks_for_person: p.asks_for_person ?? 0 }, { text: c.exchanges[i]!.user }, config);
       return state.level;
     });
     const s = scoreConversation(c as LabelledConversation, levels);

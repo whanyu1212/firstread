@@ -71,7 +71,7 @@ export const DEFAULT_RISK_CONFIG: RiskConfig = {
 };
 
 export interface LedgerEntry {
-  /** Index of the user message in the conversation's turns. */
+  /** User-turn number, from 1. Monotonic, so it survives the transcript being trimmed. */
   turn: number;
   text: string;
   level: RiskLevel;
@@ -128,11 +128,14 @@ export function initialRisk(): RiskState {
 const max = (a: RiskLevel, b: RiskLevel): RiskLevel => (rank(a) >= rank(b) ? a : b);
 const SELF_STANDING: CrisisRoute[] = ["intent", "preparation"];
 
-/** This turn's own reading, after the CRISIS context rule (part 2), with the reason. */
-function reading(
+/**
+ * This turn's own reading, after the CRISIS context rule (part 2), with the reason. Exported so a
+ * recheck of an earlier turn applies the same rules as a live turn.
+ */
+export function reading(
   p: UserSignals,
   prev: RiskState,
-  config: RiskConfig,
+  config: RiskConfig = DEFAULT_RISK_CONFIG,
 ): { level: RiskLevel; reason: string } {
   const base = assessLevel(p);
   if (base !== "CRISIS") return { level: base, reason: `this message read as ${base}` };
@@ -153,14 +156,11 @@ function reading(
   return { level: "CRISIS", reason: `${routes.join(" + ")} signal with self-harm context` };
 }
 
-/**
- * The next risk state after a user turn. `turn` is the index of the user message in the
- * conversation's turns (for the ledger); `text` is the message.
- */
+/** The next risk state after a user turn; `text` is the message (kept in the ledger if it raised concern). */
 export function updateRisk(
   prev: RiskState,
   p: UserSignals,
-  { turn, text }: { turn: number; text: string },
+  { text }: { text: string },
   config: RiskConfig = DEFAULT_RISK_CONFIG,
 ): RiskState {
   const userTurn = prev.turns + 1;
@@ -199,7 +199,7 @@ export function updateRisk(
 
   // Part 1: keep messages that raised concern, for Jev once they leave its window.
   const ledger = signal
-    ? [...prev.ledger, { turn, text: text.slice(0, config.excerptMax), level: now.level }].slice(-config.ledgerMax)
+    ? [...prev.ledger, { turn: userTurn, text: text.slice(0, config.excerptMax), level: now.level }].slice(-config.ledgerMax)
     : prev.ledger;
 
   return {
@@ -273,7 +273,11 @@ export function clearCrisis(state: RiskState, reviewer: string, at = new Date().
   };
 }
 
-/** Ledger entries Jev can no longer see: older than the window of recent turns it's shown. */
-export function ledgerOutsideWindow(state: RiskState, turnCount: number, window: number): LedgerEntry[] {
-  return state.ledger.filter((e) => e.turn < turnCount - window);
+/**
+ * Ledger entries Jev can no longer see, before the next user turn is checked: `window` is how many
+ * recent messages (user and assistant) it's shown, so it sees about half that many user turns.
+ */
+export function ledgerOutsideWindow(state: RiskState, window: number): LedgerEntry[] {
+  const visibleUserTurns = Math.ceil(window / 2);
+  return state.ledger.filter((e) => e.turn <= state.turns - visibleUserTurns);
 }

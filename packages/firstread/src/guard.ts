@@ -28,6 +28,7 @@ import {
   ledgerOutsideWindow,
   noteTurn,
   raiseRisk,
+  reading,
   resourcesDue,
   resourcesGiven,
   updateRisk,
@@ -214,7 +215,9 @@ export class FirstRead {
     const earlier = Object.assign(new Conversation(), { turns: conv.turns.slice(0, turn), risk: conv.risk });
     const signals = await this.client.ask(this.userState(earlier, msg.text), USER_TURN_QUESTIONS, { patient: true });
     const before = conv.level;
-    conv.risk = raiseRisk(conv.risk, assessLevel(signals), `recheck of an earlier turn that failed closed`);
+    // The same per-turn rules as a live turn (the CRISIS context rule included), then only ever up.
+    const { level, reason } = reading(signals, conv.risk);
+    conv.risk = raiseRisk(conv.risk, level, `recheck of an earlier turn that failed closed: ${reason}`);
     return { level: conv.level, signals, raised: conv.level !== before };
   }
 
@@ -309,12 +312,12 @@ export class FirstRead {
 
   /** The next risk state for this user message, without changing the conversation. */
   private nextRisk(conv: Conversation, userMsg: string, signals: UserSignals): RiskState {
-    return updateRisk(conv.risk, signals, { turn: conv.turns.length, text: userMsg });
+    return updateRisk(conv.risk, signals, { text: userMsg });
   }
 
   private userState(conv: Conversation, userMsg: string): string {
     // Messages that raised concern but have scrolled out of the window, so they aren't lost.
-    const earlier = ledgerOutsideWindow(conv.risk, conv.turns.length, this.window);
+    const earlier = ledgerOutsideWindow(conv.risk, this.window);
     const ledger = earlier.length
       ? `EARLIER IN THIS CONVERSATION (user messages that raised concern):\n${earlier
           .map((e) => `USER: ${e.text}`)

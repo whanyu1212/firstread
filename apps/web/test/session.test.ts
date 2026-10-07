@@ -35,6 +35,39 @@ describe("memorySessionStore", () => {
     expect((await store.get("a")).conv.risk.level).toBe("WATCH");
   });
 
+  it("an equal-version write from the same base can't undo an escalation", async () => {
+    const store = memorySessionStore();
+    const base = await store.get("a");
+    const crisis = structuredClone(base);
+    crisis.conv.risk = { ...crisis.conv.risk, level: "CRISIS", version: 2 };
+    const elevated = structuredClone(base);
+    elevated.conv.risk = { ...elevated.conv.risk, level: "ELEVATED", version: 2 };
+    await store.save("a", crisis);
+    await store.save("a", elevated); // saved last, same version
+    expect((await store.get("a")).conv.risk.level).toBe("CRISIS");
+  });
+
+  it("lock() runs a chat's turns one at a time, and other chats in parallel", async () => {
+    const store = memorySessionStore();
+    const order: string[] = [];
+    const slow = (tag: string, ms: number) => async () => {
+      order.push(`${tag} start`);
+      await new Promise((r) => setTimeout(r, ms));
+      order.push(`${tag} end`);
+      return tag;
+    };
+    const [a1, a2, b1] = await Promise.all([store.lock("a", slow("a1", 30)), store.lock("a", slow("a2", 1)), store.lock("b", slow("b1", 1))]);
+    expect([a1, a2, b1]).toEqual(["a1", "a2", "b1"]);
+    expect(order.indexOf("a2 start")).toBeGreaterThan(order.indexOf("a1 end"));
+    expect(order.indexOf("b1 end")).toBeLessThan(order.indexOf("a1 end"));
+  });
+
+  it("lock() keeps going after a failed turn", async () => {
+    const store = memorySessionStore();
+    await expect(store.lock("a", async () => { throw new Error("boom"); })).rejects.toThrow("boom");
+    await expect(store.lock("a", async () => "ok")).resolves.toBe("ok");
+  });
+
   it("keeps notes added after a snapshot was read", async () => {
     const store = memorySessionStore();
     const snapshot = await store.get("a"); // the next turn reads its session

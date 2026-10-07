@@ -80,7 +80,8 @@ export const USER_TURN_QUESTIONS = {
   latest_adds_risk: noul(
     "Considering only the latest user message, and setting aside everything said earlier, does " +
       "this message itself express or add any new sign of distress, hopelessness, thoughts of " +
-      "self-harm or suicide, or risk to the user? Count only what this message adds.",
+      "self-harm or suicide, risk to the user, or intent to harm someone else? Count only what " +
+      "this message adds; repeating an earlier threat or plan counts.",
   ),
 
   // Not a risk signal: the runtime records a handoff request when this fires (policy.ts ignores it).

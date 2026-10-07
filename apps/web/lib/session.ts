@@ -6,7 +6,7 @@
  * deployed app needs a hosted store (HY-22). The interface is async so one can drop in.
  */
 
-import { Conversation, type RiskState, type Turn, initialRisk } from "firstread";
+import { Conversation, type RiskState, type Turn, initialRisk, rank } from "firstread";
 
 export interface Note {
   kind: "coping" | "preference" | "other";
@@ -31,6 +31,12 @@ export interface SessionStore {
   save(id: string, session: Session): Promise<void>;
   /** Change the latest stored session in place, e.g. adding notes after the reply is sent. */
   update(id: string, change: (session: Session) => void): Promise<void>;
+  /**
+   * Run `work` with this chat's turns one at a time, so two requests can't both read the same
+   * session and race to save it. In memory this only serialises one instance; the hosted store
+   * (HY-22) needs the same guarantee across instances.
+   */
+  lock<T>(id: string, work: () => Promise<T>): Promise<T>;
 }
 
 export const MAX_NOTES = 20;
@@ -73,7 +79,13 @@ export function memorySessionStore({ ttlMs = 2 * 60 * 60 * 1000, maxSessions = 5
     const stored = current(id, now);
     const next = structuredClone(session);
     if (stored) {
-      if (stored.conv.risk.version > next.conv.risk.version) next.conv = structuredClone(stored.conv);
+      const s = stored.conv.risk;
+      const n = next.conv.risk;
+      // Keep the stored conversation if it's newer, or if both came from the same base and the stored
+      // one is at a higher level: a racing write must never undo an escalation.
+      if (s.version > n.version || (s.version === n.version && rank(s.level) > rank(n.level))) {
+        next.conv = structuredClone(stored.conv);
+      }
       // Notes and handoffs only accumulate, so keep any that were added after this copy was read
       // (e.g. a background note saved while the next turn was running).
       next.notes = union(next.notes, stored.notes, (n) => n.text).slice(0, MAX_NOTES);
@@ -86,7 +98,22 @@ export function memorySessionStore({ ttlMs = 2 * 60 * 60 * 1000, maxSessions = 5
     while (sessions.size > maxSessions) sessions.delete(sessions.keys().next().value!);
   };
 
+  const locks = new Map<string, Promise<unknown>>();
+
   return {
+    lock(id, work) {
+      const previous = locks.get(id) ?? Promise.resolve();
+      const run = previous.then(work, work);
+      const tail = run.then(
+        () => {},
+        () => {},
+      );
+      locks.set(id, tail);
+      void tail.then(() => {
+        if (locks.get(id) === tail) locks.delete(id);
+      });
+      return run;
+    },
     async get(id) {
       const stored = current(id, Date.now());
       return stored ? structuredClone(stored) : emptySession();
