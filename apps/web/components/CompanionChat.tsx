@@ -31,6 +31,7 @@ export function CompanionChat({ compact = false }: { compact?: boolean }) {
         {messages.map((m) => {
           const text = m.parts.map((p) => (p.type === "text" ? p.text : "")).join("");
           const timing = m.parts.find((p) => p.type === "data-timing")?.data;
+          const steps = m.parts.find((p) => p.type === "data-steps")?.data ?? [];
           return (
             <div key={m.id} className={m.role === "user" ? "text-right" : ""}>
               <div
@@ -42,7 +43,8 @@ export function CompanionChat({ compact = false }: { compact?: boolean }) {
               </div>
               {timing && (
                 <p className="mt-1 text-xs text-muted">
-                  {timing.model} · drafted in {(timing.draftMs / 1000).toFixed(1)}s
+                  {timing.model} · {steps.length ? `used ${steps.map((s) => s.tool).join(", ")}` : "no tools"} ·
+                  {" "}drafted in {(timing.draftMs / 1000).toFixed(1)}s
                 </p>
               )}
             </div>

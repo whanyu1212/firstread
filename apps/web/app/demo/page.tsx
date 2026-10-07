@@ -13,8 +13,8 @@ export default function Demo() {
         </Link>
       </header>
       <p className="mb-6 text-muted">
-        A plain companion chatbot. Next: FirstRead checks every turn here, with a live panel showing what it saw
-        (HY-19).
+        A companion agent with tools: support lines, exercises, memory and a handoff request. Next: FirstRead checks
+        every turn here, with a live panel showing each tool step and what FirstRead saw (HY-19).
       </p>
       <CompanionChat />
     </main>
