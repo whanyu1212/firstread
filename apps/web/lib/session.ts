@@ -6,7 +6,7 @@
  * deployed app needs a hosted store (HY-22). The interface is async so one can drop in.
  */
 
-import { Conversation, type RiskLevel, type Turn, rank } from "firstread";
+import { Conversation, type RiskState, type Turn, initialRisk } from "firstread";
 
 export interface Note {
   kind: "coping" | "preference" | "other";
@@ -21,7 +21,7 @@ export interface Handoff {
 
 export interface Session {
   /** FirstRead's conversation as plain data: a stored class instance would lose its methods. */
-  conv: { turns: Turn[]; level: RiskLevel };
+  conv: { turns: Turn[]; risk: RiskState };
   notes: Note[];
   handoffs: Handoff[];
 }
@@ -41,24 +41,25 @@ function union<T>(ours: T[], theirs: T[], key: (item: T) => string): T[] {
   return [...ours, ...theirs.filter((item) => !seen.has(key(item)))];
 }
 
-export const emptySession = (): Session => ({ conv: { turns: [], level: "NONE" }, notes: [], handoffs: [] });
+export const emptySession = (): Session => ({ conv: { turns: [], risk: initialRisk() }, notes: [], handoffs: [] });
 
 export function toConversation(state: Session["conv"]): Conversation {
   const conv = new Conversation();
   conv.turns = state.turns.map((t) => ({ ...t }));
-  conv.level = state.level;
+  conv.risk = structuredClone(state.risk);
   return conv;
 }
 
 export const fromConversation = (conv: Conversation): Session["conv"] => ({
   turns: conv.turns.map((t) => ({ ...t })),
-  level: conv.level,
+  risk: structuredClone(conv.risk),
 });
 
 /**
  * Sessions expire after `ttlMs` without use, and the oldest are dropped past `maxSessions`, so a
- * public endpoint can't grow memory without bound. A write never lowers the stored risk level: a
- * stale copy saved late must not undo an escalation (only a reviewer may lower it, HY-20).
+ * public endpoint can't grow memory without bound. A stale copy can't undo a newer turn: if the
+ * stored conversation's risk version is newer, it's kept (the level may legitimately come down now,
+ * so "keep the higher level" would be wrong).
  */
 export function memorySessionStore({ ttlMs = 2 * 60 * 60 * 1000, maxSessions = 500 } = {}): SessionStore {
   const sessions = new Map<string, { session: Session; touched: number }>();
@@ -72,7 +73,7 @@ export function memorySessionStore({ ttlMs = 2 * 60 * 60 * 1000, maxSessions = 5
     const stored = current(id, now);
     const next = structuredClone(session);
     if (stored) {
-      if (rank(stored.conv.level) > rank(next.conv.level)) next.conv.level = stored.conv.level;
+      if (stored.conv.risk.version > next.conv.risk.version) next.conv = structuredClone(stored.conv);
       // Notes and handoffs only accumulate, so keep any that were added after this copy was read
       // (e.g. a background note saved while the next turn was running).
       next.notes = union(next.notes, stored.notes, (n) => n.text).slice(0, MAX_NOTES);

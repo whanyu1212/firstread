@@ -1,5 +1,5 @@
 import type { UIMessage } from "ai";
-import type { Action, CheckFailure, ReplySignals, RiskLevel, UserSignals } from "firstread";
+import type { Action, CheckFailure, ReplySignals, RiskChange, RiskLevel, UserSignals } from "firstread";
 
 /**
  * Header carrying the visitor's own OpenAI key (HY-153). The server uses it for that request only
@@ -30,6 +30,20 @@ export type ChatData = {
   /** The companion failed; the user got FirstRead's fallback reply instead. */
   companionError: { message: string };
   timing: { model: string; checkMs: number | null; draftMs: number | null; totalMs: number };
+  /**
+   * The conversation's risk state after this turn, for the risk panel (HY-19). A presenter or
+   * reviewer view, never a score shown to the person chatting. `score` is risk evidence, a policy
+   * measure, not a probability.
+   */
+  risk: {
+    level: RiskLevel;
+    peak: RiskLevel;
+    score: number;
+    history: { turn: number; level: RiskLevel; score: number }[];
+    changes: RiskChange[];
+    /** Earlier messages FirstRead is still carrying forward. */
+    ledger: { text: string; level: RiskLevel }[];
+  };
 };
 
 export type ChatMessage = UIMessage<never, ChatData>;
