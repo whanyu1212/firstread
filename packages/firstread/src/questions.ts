@@ -74,6 +74,16 @@ export const USER_TURN_QUESTIONS = {
       "the user's safety?",
   ),
 
+  // The other questions read the latest message in the context of the whole conversation, so after a
+  // disclosure they stay high on calm turns. This one isolates what the latest message adds, so
+  // risk.ts can tell a calm turn from an echo of an earlier one (policy.ts ignores it).
+  latest_adds_risk: noul(
+    "Considering only the latest user message, and setting aside everything said earlier, does " +
+      "this message itself express or add any new sign of distress, hopelessness, thoughts of " +
+      "self-harm or suicide, risk to the user, or intent to harm someone else? Count only what " +
+      "this message adds; repeating an earlier threat or plan counts.",
+  ),
+
   // Not a risk signal: the runtime records a handoff request when this fires (policy.ts ignores it).
   asks_for_person: noul(
     "Is the user asking to talk to a real person rather than the chatbot? Do not count " +

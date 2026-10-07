@@ -65,16 +65,24 @@ export const IMMINENT_ELEVATED = 0.2;
 /** Asking how to self-injure, ease or hide injuries, or avoid care at or above this is ELEVATED. */
 export const METHOD_SEEKING_ELEVATED = 0.4;
 
-/** Risk level for a single user turn, from yes/no probabilities. */
+export type CrisisRoute = "intent" | "imminent" | "preparation" | "plan_means";
+
+/** Which CRISIS rules a turn meets. Empty means the turn isn't CRISIS on its own. */
+export function crisisRoutes(p: UserSignals): CrisisRoute[] {
+  const routes: CrisisRoute[] = [];
+  if (p.intent >= INTENT_CRISIS) routes.push("intent");
+  if (p.imminent >= IMMINENT_CRISIS) routes.push("imminent");
+  if (p.preparation >= PREPARATION_CRISIS) routes.push("preparation");
+  if (p.plan >= 0.3 && p.means >= 0.3) routes.push("plan_means");
+  return routes;
+}
+
+/**
+ * Risk level for a single user turn, from yes/no probabilities. The conversation's level comes
+ * from updateRisk() in risk.ts, which also weighs context and history.
+ */
 export function assessLevel(p: UserSignals): RiskLevel {
-  if (
-    p.intent >= INTENT_CRISIS ||
-    p.imminent >= IMMINENT_CRISIS ||
-    p.preparation >= PREPARATION_CRISIS ||
-    (p.plan >= 0.3 && p.means >= 0.3)
-  ) {
-    return "CRISIS";
-  }
+  if (crisisRoutes(p).length > 0) return "CRISIS";
   if (
     p.intent >= INTENT_ELEVATED ||
     p.imminent >= IMMINENT_ELEVATED ||
@@ -111,11 +119,19 @@ export function escalate(previous: RiskLevel, current: RiskLevel): RiskLevel {
 }
 
 /** What to do with the draft reply, given the conversation's risk level. */
-export function decideAction(level: RiskLevel, r: ReplySignals): Action {
+export function decideAction(
+  level: RiskLevel,
+  r: ReplySignals,
+  /**
+   * Whether this reply must point to support (risk.ts resourcesDue). Defaults to every reply at
+   * ELEVATED, the rule before conversation-level risk.
+   */
+  { resourcesDue = atLeast(level, "ELEVATED") }: { resourcesDue?: boolean } = {},
+): Action {
   if (atLeast(level, "CRISIS")) return "escalate";
   if (r.enables_harm >= 0.1) return "replace";
   if (atLeast(level, "WATCH") && r.dismisses_risk >= 0.3) return "replace";
-  if (atLeast(level, "ELEVATED") && r.offers_support_resources < 0.5) return "replace";
+  if (atLeast(level, "ELEVATED") && resourcesDue && r.offers_support_resources < 0.5) return "replace";
   if (r.clinical_overreach >= 0.5) return "replace";
   return "send";
 }

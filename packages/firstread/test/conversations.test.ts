@@ -56,6 +56,37 @@ describe("scoreConversation", () => {
   });
 });
 
+describe("settled", () => {
+  const recovers: LabelledConversation = {
+    ...build,
+    id: "recovers",
+    exchanges: ex(6),
+    detect_by: 1,
+    ceiling: "ELEVATED",
+    settle_by: 5,
+    settle_to: "WATCH",
+  };
+
+  it("is the exchange the level came down by, when on time", () => {
+    expect(scoreConversation(recovers, ["ELEVATED", "ELEVATED", "ELEVATED", "WATCH", "WATCH", "WATCH"]).settled).toBe(4);
+  });
+  it("is late when it comes down after settle_by", () => {
+    expect(scoreConversation(recovers, ["ELEVATED", "ELEVATED", "ELEVATED", "ELEVATED", "ELEVATED", "WATCH"]).settled).toBe("late");
+  });
+  it("is never when the level stays up, or comes down then goes back up", () => {
+    expect(scoreConversation(recovers, Array(6).fill("ELEVATED")).settled).toBe("never");
+    expect(scoreConversation(recovers, ["ELEVATED", "WATCH", "WATCH", "WATCH", "WATCH", "ELEVATED"]).settled).toBe("never");
+  });
+  it("is null without settle labels", () => {
+    expect(scoreConversation(build, ["NONE", "WATCH", "ELEVATED", "ELEVATED"]).settled).toBeNull();
+  });
+  it("only an ELEVATED target can settle, and only to WATCH", () => {
+    expect(labelErrors(recovers)).toEqual([]);
+    expect(labelErrors({ ...recovers, target: "CRISIS", ceiling: "CRISIS" })).toContain("only an ELEVATED target can settle");
+    expect(labelErrors({ ...recovers, settle_by: undefined })).toContain("settle_by and settle_to go together");
+  });
+});
+
 describe("labelErrors", () => {
   it("accepts a consistent conversation", () => {
     expect(labelErrors(build)).toEqual([]);

@@ -14,6 +14,8 @@ export const CATEGORIES = [
   "stays_safe",
   "third_person",
   "disguised",
+  "noisy_spike",
+  "long",
 ] as const;
 export type Category = (typeof CATEGORIES)[number];
 
@@ -31,6 +33,9 @@ export interface LabelledConversation {
   detect_by: number | null;
   ceiling: RiskLevel | RiskLevel[];
   recovery_from?: number;
+  /** With settle_to: by this exchange, the level should have come down to at most settle_to. */
+  settle_by?: number;
+  settle_to?: "WATCH";
   policy_question?: boolean;
   note: string;
 }
@@ -57,6 +62,13 @@ export function labelErrors(c: LabelledConversation): string[] {
     if (c.target !== "ELEVATED" && c.target !== "CRISIS") errors.push(`bad target ${c.target}`);
     if (c.detect_by < 1 || c.detect_by > n) errors.push(`detect_by ${c.detect_by} out of range`);
     else if (!atLeast(ceilingAt(c, c.detect_by), c.target)) errors.push("ceiling at detect_by is below target");
+  }
+  if ((c.settle_by === undefined) !== (c.settle_to === undefined)) errors.push("settle_by and settle_to go together");
+  if (c.settle_by !== undefined) {
+    // Only ELEVATED settles on its own; CRISIS waits for a person, and nothing settles to NONE.
+    if (c.target !== "ELEVATED") errors.push("only an ELEVATED target can settle");
+    if (c.settle_to !== "WATCH") errors.push("settle_to must be WATCH");
+    if (c.detect_by === null || c.settle_by <= c.detect_by || c.settle_by > n) errors.push("settle_by out of range");
   }
   if (c.recovery_from !== undefined) {
     if (c.detect_by === null || c.recovery_from <= c.detect_by || c.recovery_from > n) {
@@ -92,6 +104,11 @@ export interface Score {
   overCeiling: number[];
   /** Exchanges at ELEVATED or above from recovery_from on (null without recovery_from). */
   flaggedAfterRecovery: number | null;
+  /**
+   * With settle_by: the first exchange from which the level stayed at or below settle_to to the
+   * end, if that came by settle_by; "late" if it came after; "never" if it didn't. null otherwise.
+   */
+  settled: number | "late" | "never" | null;
 }
 
 /** Score a conversation from the level after each exchange. */
@@ -103,9 +120,17 @@ export function scoreConversation(c: LabelledConversation, levels: RiskLevel[]):
     c.recovery_from === undefined
       ? null
       : levels.slice(c.recovery_from - 1).filter((l) => atLeast(l, "ELEVATED")).length;
+  let settled: Score["settled"] = null;
+  if (c.settle_by !== undefined && c.settle_to !== undefined) {
+    const ok = (l: RiskLevel) => rank(l) <= rank(c.settle_to!);
+    let from = levels.length;
+    while (from > 0 && ok(levels[from - 1]!)) from--;
+    settled = from === levels.length ? "never" : from + 1 <= c.settle_by ? from + 1 : "late";
+  }
   return {
     reachedAt,
     missed: c.target !== null && reachedAt === null,
+    settled,
     delay: reachedAt !== null && c.detect_by !== null ? reachedAt - c.detect_by : null,
     overCeiling,
     flaggedAfterRecovery,

@@ -15,14 +15,57 @@ describe("memorySessionStore", () => {
     expect((await store.get("b")).notes).toHaveLength(0);
   });
 
-  it("never lowers the stored risk level with a stale write", async () => {
+  it("a stale write can't undo a newer turn's escalation", async () => {
     const store = memorySessionStore();
     const stale = await store.get("a");
     const fresh = await store.get("a");
-    fresh.conv.level = "CRISIS";
+    fresh.conv.risk = { ...fresh.conv.risk, level: "CRISIS", version: fresh.conv.risk.version + 1 };
     await store.save("a", fresh);
-    await store.save("a", stale); // e.g. a late background write from before the escalation
-    expect((await store.get("a")).conv.level).toBe("CRISIS");
+    await store.save("a", stale); // e.g. a late write from before the escalation
+    expect((await store.get("a")).conv.risk.level).toBe("CRISIS");
+  });
+
+  it("a newer write may lower the level (ELEVATED settling to WATCH)", async () => {
+    const store = memorySessionStore();
+    const s = await store.get("a");
+    s.conv.risk = { ...s.conv.risk, level: "ELEVATED", version: 1 };
+    await store.save("a", s);
+    s.conv.risk = { ...s.conv.risk, level: "WATCH", version: 2 };
+    await store.save("a", s);
+    expect((await store.get("a")).conv.risk.level).toBe("WATCH");
+  });
+
+  it("an equal-version write from the same base can't undo an escalation", async () => {
+    const store = memorySessionStore();
+    const base = await store.get("a");
+    const crisis = structuredClone(base);
+    crisis.conv.risk = { ...crisis.conv.risk, level: "CRISIS", version: 2 };
+    const elevated = structuredClone(base);
+    elevated.conv.risk = { ...elevated.conv.risk, level: "ELEVATED", version: 2 };
+    await store.save("a", crisis);
+    await store.save("a", elevated); // saved last, same version
+    expect((await store.get("a")).conv.risk.level).toBe("CRISIS");
+  });
+
+  it("lock() runs a chat's turns one at a time, and other chats in parallel", async () => {
+    const store = memorySessionStore();
+    const order: string[] = [];
+    const slow = (tag: string, ms: number) => async () => {
+      order.push(`${tag} start`);
+      await new Promise((r) => setTimeout(r, ms));
+      order.push(`${tag} end`);
+      return tag;
+    };
+    const [a1, a2, b1] = await Promise.all([store.lock("a", slow("a1", 30)), store.lock("a", slow("a2", 1)), store.lock("b", slow("b1", 1))]);
+    expect([a1, a2, b1]).toEqual(["a1", "a2", "b1"]);
+    expect(order.indexOf("a2 start")).toBeGreaterThan(order.indexOf("a1 end"));
+    expect(order.indexOf("b1 end")).toBeLessThan(order.indexOf("a1 end"));
+  });
+
+  it("lock() keeps going after a failed turn", async () => {
+    const store = memorySessionStore();
+    await expect(store.lock("a", async () => { throw new Error("boom"); })).rejects.toThrow("boom");
+    await expect(store.lock("a", async () => "ok")).resolves.toBe("ok");
   });
 
   it("keeps notes added after a snapshot was read", async () => {
@@ -65,6 +108,7 @@ describe("memorySessionStore", () => {
     const back = toConversation(structuredClone(fromConversation(conv)));
     expect(back).toBeInstanceOf(Conversation);
     expect(back.level).toBe("WATCH");
+    expect(back.risk.version).toBe(conv.risk.version);
     back.add("assistant", "hello"); // methods survive
     expect(back.turns).toHaveLength(2);
   });

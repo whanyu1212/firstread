@@ -72,7 +72,7 @@ describe("runTurn", () => {
     expect(r.audit).toMatchObject({ action: "escalate", level: "CRISIS", reply: DEMO_REPLIES.crisis });
     expect(r.handoff?.reason).toMatch(/CRISIS/);
     expect(jev.calls.reply).toBe(0);
-    expect(session.conv.level).toBe("CRISIS");
+    expect(session.conv.risk.level).toBe("CRISIS");
   });
 
   it("escalates even if CRISIS arrives after the draft is done", async () => {
@@ -86,7 +86,7 @@ describe("runTurn", () => {
 
   it("answers at once with no checks and no companion when already at CRISIS", async () => {
     const { deps, session, jev, companion } = setup();
-    session.conv.level = "CRISIS";
+    session.conv.risk = { ...session.conv.risk, level: "CRISIS", peak: "CRISIS" };
     const r = await runTurn("thanks", session, deps);
     expect(r.shortCircuit).toBe("already-crisis");
     expect(r.audit.reply).toBe(DEMO_REPLIES.crisis);
@@ -129,7 +129,7 @@ describe("runTurn", () => {
     expect(r.draftError).toBeInstanceOf(Error);
     expect(r.audit.reply).toBe(DEMO_REPLIES.safe);
     expect(r.audit.reply).toContain("1767");
-    expect(session.conv.level).toBe("ELEVATED");
+    expect(session.conv.risk.level).toBe("ELEVATED");
   });
 
   it("stops a companion that takes too long and sends FirstRead's fallback", async () => {

@@ -144,6 +144,7 @@ for (const { row, c, s } of scored) {
     s.missed ? "MISSED" : s.delay !== null ? (s.delay > 0 ? `late +${s.delay}` : s.delay < 0 ? `early ${s.delay}` : "on time") : "ok",
     s.overCeiling.length ? `over ceiling at #${s.overCeiling.join(",#")}` : "",
     s.flaggedAfterRecovery ? `${s.flaggedAfterRecovery} flagged after recovery` : "",
+    s.settled === null ? "" : typeof s.settled === "number" ? `settled at #${s.settled}` : `settled ${s.settled.toUpperCase()}`,
   ]
     .filter(Boolean)
     .join(", ");
@@ -157,6 +158,7 @@ const late = targeted.filter(({ s }) => (s.delay ?? 0) > 0);
 const over = scored.filter(({ s }) => s.overCeiling.length);
 const overExchanges = scored.reduce((n, { s }) => n + s.overCeiling.length, 0);
 const recovery = scored.filter(({ s }) => s.flaggedAfterRecovery !== null);
+const settling = scored.filter(({ s }) => s.settled !== null);
 
 console.log(`\nmissed:            ${missed.length} of ${targeted.length} conversations that should escalate`);
 console.log(`late:              ${late.length} (by ${late.map(({ s }) => `+${s.delay}`).join(", ") || "-"})`);
@@ -166,6 +168,11 @@ if (recovery.length) {
     `after recovery:    ${recovery.reduce((n, { s }) => n + (s.flaggedAfterRecovery ?? 0), 0)} exchanges still flagged ` +
       `across ${recovery.length} conversations (cost of the sticky level, not a Jev error)`,
   );
+}
+
+if (settling.length) {
+  const onTime = settling.filter(({ s }) => typeof s.settled === "number").length;
+  console.log(`settled on time:   ${onTime} of ${settling.length} conversations that should come down to WATCH`);
 }
 
 console.log("\ncategory         n  missed  late  over ceiling");

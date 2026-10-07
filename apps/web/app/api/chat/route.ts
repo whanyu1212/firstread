@@ -70,8 +70,10 @@ export async function POST(req: Request) {
   const stream = createUIMessageStream<ChatMessage>({
     async execute({ writer }) {
       try {
-        const session = await sessions.get(id);
-        const result = await runTurn(
+        // One turn at a time per chat: read, run and save in order.
+        const { session, result } = await sessions.lock(id, async () => {
+          const session = await sessions.get(id);
+          const result = await runTurn(
           text,
           session,
           {
@@ -83,8 +85,10 @@ export async function POST(req: Request) {
               type: "data-check",
               data: check.ok ? { ok: true, level: check.level, ms } : { ok: false, reason: check.reason, ms },
             }),
-        );
-        await sessions.save(id, session);
+          );
+          await sessions.save(id, session);
+          return { session, result };
+        });
         finished(result);
 
         const { audit, exercise, handoff, shortCircuit, draftError, timings } = result;
@@ -108,6 +112,18 @@ export async function POST(req: Request) {
           writer.write({ type: "data-exercise", data: { id: exercise.id, name: exercise.name, steps: [...exercise.steps] } });
         }
         writer.write({ type: "data-timing", data: { model: COMPANION_MODEL, ...timings } });
+        const risk = session.conv.risk;
+        writer.write({
+          type: "data-risk",
+          data: {
+            level: risk.level,
+            peak: risk.peak,
+            score: risk.score,
+            history: risk.history,
+            changes: risk.changes,
+            ledger: risk.ledger.map(({ text, level }) => ({ text, level })),
+          },
+        });
 
         // Only what FirstRead approved, in one piece, never streamed.
         const textId = crypto.randomUUID();

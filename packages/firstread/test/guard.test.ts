@@ -57,11 +57,12 @@ describe("FirstRead.audit", () => {
     const { client, guard } = make();
     const conv = new Conversation();
     client.overrides.plan = 0.5;
+    client.overrides.latest_adds_risk = 0.8; // the first message is what raises the risk
     await guard.audit(conv, "first", "draft");
     client.overrides = {};
     const audit = await guard.audit(conv, "feeling better", "draft");
     expect(audit.level).toBe("ELEVATED");
-    // elevated + draft with no support resources -> replaced
+    // elevated, one turn after the signal + draft with no support resources -> replaced
     expect(audit.action).toBe("replace");
   });
 

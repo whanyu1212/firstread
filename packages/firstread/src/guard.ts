@@ -14,21 +14,25 @@
  */
 
 import { type FailureReason, type JevClient, type NoulQuestion, createJevClient, failureReason } from "./jev";
-import {
-  type Action,
-  type RiskLevel,
-  assessLevel,
-  atLeast,
-  decideAction,
-  escalate,
-  failClosedAction,
-} from "./policy";
+import { type Action, type RiskLevel, assessLevel, atLeast, decideAction, failClosedAction, rank } from "./policy";
 import {
   REPLY_QUESTIONS,
   type ReplySignals,
   USER_TURN_QUESTIONS,
   type UserSignals,
 } from "./questions";
+import {
+  type RiskState,
+  clearCrisis,
+  initialRisk,
+  ledgerOutsideWindow,
+  noteTurn,
+  raiseRisk,
+  reading,
+  resourcesDue,
+  resourcesGiven,
+  updateRisk,
+} from "./risk";
 import { DEFAULT_REPLIES, type Replies } from "./templates";
 
 export type Role = "user" | "assistant";
@@ -36,7 +40,17 @@ export type Turn = { role: Role; text: string };
 
 export class Conversation {
   turns: Turn[] = [];
-  level: RiskLevel = "NONE";
+  /** The conversation's risk state (risk.ts). Only updateRisk() and the helpers there change it. */
+  risk: RiskState = initialRisk();
+
+  /** The current risk level. Setting it directly is for tests and migrations. */
+  get level(): RiskLevel {
+    return this.risk.level;
+  }
+  set level(level: RiskLevel) {
+    const peak = rank(level) > rank(this.risk.peak) ? level : this.risk.peak;
+    this.risk = { ...this.risk, level, peak, version: this.risk.version + 1 };
+  }
 
   add(role: Role, text: string): void {
     this.turns.push({ role, text });
@@ -127,10 +141,10 @@ export class FirstRead {
    */
   startTurn(conv: Conversation, userMsg: string): PendingTurn {
     const abort = new AbortController();
-    const userOutcome = this.live(this.userState(conv.turns, userMsg), USER_TURN_QUESTIONS, abort);
+    const userOutcome = this.live(this.userState(conv, userMsg), USER_TURN_QUESTIONS, abort);
     const user = userOutcome.then(
       (u): UserCheck =>
-        u.ok ? { ok: true, level: escalate(conv.level, assessLevel(u.signals)), signals: u.signals } : u,
+        u.ok ? { ok: true, level: this.nextRisk(conv, userMsg, u.signals).level, signals: u.signals } : u,
     );
     return {
       user,
@@ -146,6 +160,7 @@ export class FirstRead {
   crisisTurn(conv: Conversation, userMsg: string): TurnAudit {
     if (conv.level !== "CRISIS") throw new Error("crisisTurn is only for conversations at CRISIS");
     const turn = conv.turns.length;
+    conv.risk = noteTurn(conv.risk);
     conv.add("user", userMsg);
     conv.add("assistant", this.replies.crisis);
     return {
@@ -169,10 +184,10 @@ export class FirstRead {
     conv: Conversation,
     userMsg: string,
   ): Promise<{ level: RiskLevel; signals: UserSignals }> {
-    const signals = await this.client.ask(this.userState(conv.turns, userMsg), USER_TURN_QUESTIONS, {
+    const signals = await this.client.ask(this.userState(conv, userMsg), USER_TURN_QUESTIONS, {
       patient: true,
     });
-    conv.level = escalate(conv.level, assessLevel(signals));
+    conv.risk = this.nextRisk(conv, userMsg, signals);
     return { level: conv.level, signals };
   }
 
@@ -181,10 +196,10 @@ export class FirstRead {
     userMsg: string,
     draft: string,
   ): Promise<{ action: Action; signals: ReplySignals }> {
-    const signals = await this.client.ask(this.replyState(conv.turns, userMsg, draft), REPLY_QUESTIONS, {
+    const signals = await this.client.ask(this.replyState(conv, userMsg, draft), REPLY_QUESTIONS, {
       patient: true,
     });
-    return { action: decideAction(conv.level, signals), signals };
+    return { action: decideAction(conv.level, signals, { resourcesDue: resourcesDue(conv.risk) }), signals };
   }
 
   /**
@@ -197,10 +212,12 @@ export class FirstRead {
   ): Promise<{ level: RiskLevel; signals: UserSignals; raised: boolean }> {
     const msg = conv.turns[turn];
     if (msg?.role !== "user") throw new Error(`turn ${turn} is not a user message`);
-    const state = this.userState(conv.turns.slice(0, turn), msg.text);
-    const signals = await this.client.ask(state, USER_TURN_QUESTIONS, { patient: true });
+    const earlier = Object.assign(new Conversation(), { turns: conv.turns.slice(0, turn), risk: conv.risk });
+    const signals = await this.client.ask(this.userState(earlier, msg.text), USER_TURN_QUESTIONS, { patient: true });
     const before = conv.level;
-    conv.level = escalate(conv.level, assessLevel(signals));
+    // The same per-turn rules as a live turn (the CRISIS context rule included), then only ever up.
+    const { level, reason } = reading(signals, conv.risk);
+    conv.risk = raiseRisk(conv.risk, level, `recheck of an earlier turn that failed closed: ${reason}`);
     return { level: conv.level, signals, raised: conv.level !== before };
   }
 
@@ -211,18 +228,25 @@ export class FirstRead {
     userCheck: Promise<Outcome<UserSignals>>,
     abort: AbortController,
   ): Promise<TurnAudit> {
-    const replyCheck = this.live(this.replyState(conv.turns, userMsg, draft), REPLY_QUESTIONS, abort);
+    const replyCheck = this.live(this.replyState(conv, userMsg, draft), REPLY_QUESTIONS, abort);
     const timer = setTimeout(() => abort.abort(), this.deadlineMs);
     const [user, reply] = await Promise.all([userCheck, replyCheck]).finally(() => clearTimeout(timer));
 
-    if (user.ok) conv.level = escalate(conv.level, assessLevel(user.signals));
+    // A failed user check leaves the risk state as it was, apart from counting the turn.
+    conv.risk = user.ok ? this.nextRisk(conv, userMsg, user.signals) : noteTurn(conv.risk);
     const failures: CheckFailure[] = [];
     if (!user.ok) failures.push({ check: "user", reason: user.reason });
     if (!reply.ok) failures.push({ check: "reply", reason: reply.reason });
 
     const action =
-      user.ok && reply.ok ? decideAction(conv.level, reply.signals) : failClosedAction(conv.level);
+      user.ok && reply.ok
+        ? decideAction(conv.level, reply.signals, { resourcesDue: resourcesDue(conv.risk) })
+        : failClosedAction(conv.level);
     const sent = failures.length > 0 ? fallbackReply(conv.level, this.replies) : replyFor(action, draft, this.replies);
+    // The safe and crisis replies carry the support lines; a sent draft does if the check says so.
+    if (sent !== draft || (reply.ok && reply.signals.offers_support_resources >= 0.5 && atLeast(conv.level, "ELEVATED"))) {
+      if (atLeast(conv.level, "ELEVATED")) conv.risk = resourcesGiven(conv.risk);
+    }
 
     const turn = conv.turns.length;
     conv.add("user", userMsg);
@@ -248,10 +272,11 @@ export class FirstRead {
     // The same bounded wait as finish(): a hung check times out and the turn fails closed.
     const timer = setTimeout(() => abort.abort(), this.deadlineMs);
     const user = await userCheck.finally(() => clearTimeout(timer));
-    if (user.ok) conv.level = escalate(conv.level, assessLevel(user.signals));
+    conv.risk = user.ok ? this.nextRisk(conv, userMsg, user.signals) : noteTurn(conv.risk);
     const failures: CheckFailure[] = user.ok ? [] : [{ check: "user", reason: user.reason }];
     const action = failClosedAction(conv.level);
     const sent = fallbackReply(conv.level, this.replies);
+    if (atLeast(conv.level, "ELEVATED")) conv.risk = resourcesGiven(conv.risk);
 
     const turn = conv.turns.length;
     conv.add("user", userMsg);
@@ -285,12 +310,29 @@ export class FirstRead {
     return Promise.race([call, deadline]);
   }
 
-  private userState(turns: Turn[], userMsg: string): string {
-    return `${this.transcript(turns)}\n\nLATEST USER MESSAGE:\n${userMsg}`;
+  /** The next risk state for this user message, without changing the conversation. */
+  private nextRisk(conv: Conversation, userMsg: string, signals: UserSignals): RiskState {
+    return updateRisk(conv.risk, signals, { text: userMsg });
   }
 
-  private replyState(turns: Turn[], userMsg: string, draft: string): string {
-    return `${this.userState(turns, userMsg)}\n\nDRAFT ASSISTANT REPLY:\n${draft}`;
+  private userState(conv: Conversation, userMsg: string): string {
+    // Messages that raised concern but have scrolled out of the window, so they aren't lost.
+    const earlier = ledgerOutsideWindow(conv.risk, this.window);
+    const ledger = earlier.length
+      ? `EARLIER IN THIS CONVERSATION (user messages that raised concern):\n${earlier
+          .map((e) => `USER: ${e.text}`)
+          .join("\n")}\n\n`
+      : "";
+    return `${ledger}${this.transcript(conv.turns)}\n\nLATEST USER MESSAGE:\n${userMsg}`;
+  }
+
+  private replyState(conv: Conversation, userMsg: string, draft: string): string {
+    return `${this.userState(conv, userMsg)}\n\nDRAFT ASSISTANT REPLY:\n${draft}`;
+  }
+
+  /** A person clears CRISIS (HY-20): the level comes down to ELEVATED, with the reviewer recorded. */
+  clearCrisis(conv: Conversation, reviewer: string): void {
+    conv.risk = clearCrisis(conv.risk, reviewer);
   }
 
   private transcript(turns: Turn[]): string {
