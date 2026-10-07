@@ -29,7 +29,7 @@ import {
   USER_TURN_QUESTIONS,
   type UserSignals,
 } from "./questions";
-import { CRISIS_REPLY, HOLDING_REPLY, SAFE_REPLY } from "./templates";
+import { DEFAULT_REPLIES, type Replies } from "./templates";
 
 export type Role = "user" | "assistant";
 export type Turn = { role: Role; text: string };
@@ -73,32 +73,36 @@ export interface FirstReadOptions {
   window?: number;
   /** Live turns: how long both checks may take once the draft is ready, retries included. */
   deadlineMs?: number;
+  /** Replies sent instead of a draft. Defaults are US-centric; use `repliesFor(country)` to localise. */
+  replies?: Partial<Replies>;
 }
 
 type Outcome<T> = { ok: true; signals: T } | { ok: false; reason: FailureReason };
 
-const REPLY_FOR: Record<Action, (draft: string) => string> = {
-  send: (draft) => draft,
-  replace: () => SAFE_REPLY,
-  escalate: () => CRISIS_REPLY,
-};
+function replyFor(action: Action, draft: string, replies: Replies): string {
+  if (action === "escalate") return replies.crisis;
+  if (action === "replace") return replies.safe;
+  return draft;
+}
 
 /** Fail-closed reply: as gentle as the known risk level allows. */
-function fallbackReply(level: RiskLevel): string {
-  if (atLeast(level, "CRISIS")) return CRISIS_REPLY;
-  if (atLeast(level, "ELEVATED")) return SAFE_REPLY;
-  return HOLDING_REPLY;
+function fallbackReply(level: RiskLevel, replies: Replies): string {
+  if (atLeast(level, "CRISIS")) return replies.crisis;
+  if (atLeast(level, "ELEVATED")) return replies.safe;
+  return replies.holding;
 }
 
 export class FirstRead {
   private readonly client: JevClient;
   private readonly window: number;
   private readonly deadlineMs: number;
+  private readonly replies: Replies;
 
-  constructor({ client, window = 8, deadlineMs = 3_000 }: FirstReadOptions = {}) {
+  constructor({ client, window = 8, deadlineMs = 3_000, replies }: FirstReadOptions = {}) {
     this.client = client ?? createJevClient();
     this.window = window;
     this.deadlineMs = deadlineMs;
+    this.replies = { ...DEFAULT_REPLIES, ...replies };
   }
 
   /**
@@ -173,7 +177,7 @@ export class FirstRead {
 
     const action =
       user.ok && reply.ok ? decideAction(conv.level, reply.signals) : failClosedAction(conv.level);
-    const sent = failures.length > 0 ? fallbackReply(conv.level) : REPLY_FOR[action](draft);
+    const sent = failures.length > 0 ? fallbackReply(conv.level, this.replies) : replyFor(action, draft, this.replies);
 
     const turn = conv.turns.length;
     conv.add("user", userMsg);
