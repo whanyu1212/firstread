@@ -32,6 +32,8 @@ export function CompanionChat({ compact = false }: { compact?: boolean }) {
       new DefaultChatTransport<ChatMessage>({
         api: "/api/chat",
         headers: (): Record<string, string> => (keyRef.current ? { [OPENAI_KEY_HEADER]: keyRef.current } : {}),
+        // Only the new message: the history FirstRead and the companion use is kept on the server.
+        prepareSendMessagesRequest: ({ id, messages }) => ({ body: { id, message: messages.at(-1) } }),
       }),
   );
   const { messages, sendMessage, status, error } = useChat<ChatMessage>({ transport });
@@ -60,27 +62,67 @@ export function CompanionChat({ compact = false }: { compact?: boolean }) {
         {messages.length === 0 && <p className="text-sm text-muted">Say hello to the companion.</p>}
         {messages.map((m) => {
           const text = m.parts.map((p) => (p.type === "text" ? p.text : "")).join("");
-          const timing = m.parts.find((p) => p.type === "data-timing")?.data;
-          const steps = m.parts.find((p) => p.type === "data-steps")?.data ?? [];
-          return (
-            <div key={m.id} className={m.role === "user" ? "text-right" : ""}>
-              <div
-                className={`inline-block max-w-[85%] rounded-2xl px-4 py-2 text-left ${
-                  m.role === "user" ? "bg-accent text-on-accent" : "bg-raised"
-                }`}
-              >
-                {text}
+          const data = <T extends ChatMessage["parts"][number]["type"]>(type: T) =>
+            m.parts.find((p) => p.type === type) as Extract<ChatMessage["parts"][number], { type: T }> | undefined;
+          const check = data("data-check")?.data;
+          const audit = data("data-audit")?.data;
+          const exercise = data("data-exercise")?.data;
+          const handoff = data("data-handoff")?.data;
+          const companionError = data("data-companionError")?.data;
+          const timing = data("data-timing")?.data;
+          const secs = (ms: number | null) => (ms === null ? "–" : `${(ms / 1000).toFixed(1)}s`);
+          if (m.role === "user") {
+            return (
+              <div key={m.id} className="text-right">
+                <div className="inline-block max-w-[85%] rounded-2xl bg-accent px-4 py-2 text-left text-on-accent">
+                  {text}
+                </div>
               </div>
-              {timing && (
+            );
+          }
+          return (
+            <div key={m.id}>
+              {text ? (
+                <div className="inline-block max-w-[85%] whitespace-pre-line rounded-2xl bg-raised px-4 py-2">{text}</div>
+              ) : (
+                <p className="text-sm text-muted">
+                  {check
+                    ? check.ok
+                      ? `FirstRead read your message (${check.level}, ${secs(check.ms)}). Companion is replying…`
+                      : "FirstRead couldn't check your message in time. Holding the reply…"
+                    : "FirstRead is reading your message…"}
+                </p>
+              )}
+              {exercise && (
+                <div className="mt-2 max-w-[85%] rounded-2xl border border-line p-3 text-sm">
+                  <p className="mb-1 font-medium">{exercise.name}</p>
+                  <ol className="ml-5 list-decimal space-y-1 text-muted">
+                    {exercise.steps.map((step) => (
+                      <li key={step}>{step}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+              {companionError && <p className="mt-1 text-xs text-danger">{companionError.message}</p>}
+              {handoff && (
                 <p className="mt-1 text-xs text-muted">
-                  {timing.model} · {steps.length ? `used ${steps.map((s) => s.tool).join(", ")}` : "no tools"} ·
-                  {" "}drafted in {(timing.draftMs / 1000).toFixed(1)}s
+                  Request for a person recorded. In this demo, no one is on call.
+                </p>
+              )}
+              {audit && timing && (
+                <p className="mt-1 text-xs text-muted">
+                  FirstRead: {audit.action} at {audit.level}
+                  {audit.shortCircuit ? ` (${audit.shortCircuit === "already-crisis" ? "already at CRISIS" : "short circuit"})` : ""}
+                  {audit.failures.length ? ` · failed closed (${audit.failures.map((f) => f.check).join(", ")} check)` : ""} ·
+                  check {secs(timing.checkMs)} · companion {secs(timing.draftMs)} · total {secs(timing.totalMs)}
                 </p>
               )}
             </div>
           );
         })}
-        {busy && <p className="text-sm text-muted">Companion is replying…</p>}
+        {busy && messages.at(-1)?.role === "user" && (
+          <p className="text-sm text-muted">FirstRead is reading your message…</p>
+        )}
         {error && <p className="text-sm text-danger">{errorMessage(error)}</p>}
       </div>
       <form onSubmit={submit} className="flex gap-2 border-t border-line p-3">
