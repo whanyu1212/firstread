@@ -61,9 +61,25 @@ export interface TurnAudit {
   reply: string;
 }
 
+/** The user check's result, before the turn is recorded. `level` includes the conversation's level. */
+export type UserCheck =
+  | { ok: true; level: RiskLevel; signals: UserSignals }
+  | { ok: false; reason: FailureReason };
+
 export interface PendingTurn {
+  /**
+   * The user check as soon as it answers, without changing the conversation. Lets the caller act
+   * early, e.g. stop drafting when it says CRISIS. Never rejects.
+   */
+  user: Promise<UserCheck>;
   /** Run the reply check on the draft, decide, and record the turn. */
   finish(draft: string): Promise<TurnAudit>;
+  /**
+   * Record the turn without a draft: the user check's level still applies, and the user gets the
+   * reply that level calls for (the crisis reply at CRISIS, otherwise the fail-closed fallback).
+   * For when drafting was stopped or failed. Never sends anything unchecked.
+   */
+  finishWithoutDraft(): Promise<TurnAudit>;
 }
 
 export interface FirstReadOptions {
@@ -111,8 +127,37 @@ export class FirstRead {
    */
   startTurn(conv: Conversation, userMsg: string): PendingTurn {
     const abort = new AbortController();
-    const user = this.live(this.userState(conv.turns, userMsg), USER_TURN_QUESTIONS, abort);
-    return { finish: (draft) => this.finish(conv, userMsg, draft, user, abort) };
+    const userOutcome = this.live(this.userState(conv.turns, userMsg), USER_TURN_QUESTIONS, abort);
+    const user = userOutcome.then(
+      (u): UserCheck =>
+        u.ok ? { ok: true, level: escalate(conv.level, assessLevel(u.signals)), signals: u.signals } : u,
+    );
+    return {
+      user,
+      finish: (draft) => this.finish(conv, userMsg, draft, userOutcome, abort),
+      finishWithoutDraft: () => this.finishWithoutDraft(conv, userMsg, userOutcome),
+    };
+  }
+
+  /**
+   * A turn in a conversation already at CRISIS: the level can't go higher and only a reviewer can
+   * lower it, so every turn escalates. No checks run; the crisis reply goes out at once.
+   */
+  crisisTurn(conv: Conversation, userMsg: string): TurnAudit {
+    if (conv.level !== "CRISIS") throw new Error("crisisTurn is only for conversations at CRISIS");
+    const turn = conv.turns.length;
+    conv.add("user", userMsg);
+    conv.add("assistant", this.replies.crisis);
+    return {
+      turn,
+      level: conv.level,
+      action: "escalate",
+      userSignals: null,
+      replySignals: null,
+      failures: [],
+      draft: "",
+      reply: this.replies.crisis,
+    };
   }
 
   /** A live turn when the draft is already written. */
@@ -190,6 +235,32 @@ export class FirstRead {
       replySignals: reply.ok ? reply.signals : null,
       failures,
       draft,
+      reply: sent,
+    };
+  }
+
+  private async finishWithoutDraft(
+    conv: Conversation,
+    userMsg: string,
+    userCheck: Promise<Outcome<UserSignals>>,
+  ): Promise<TurnAudit> {
+    const user = await userCheck;
+    if (user.ok) conv.level = escalate(conv.level, assessLevel(user.signals));
+    const failures: CheckFailure[] = user.ok ? [] : [{ check: "user", reason: user.reason }];
+    const action = failClosedAction(conv.level);
+    const sent = fallbackReply(conv.level, this.replies);
+
+    const turn = conv.turns.length;
+    conv.add("user", userMsg);
+    conv.add("assistant", sent);
+    return {
+      turn,
+      level: conv.level,
+      action,
+      userSignals: user.ok ? user.signals : null,
+      replySignals: null,
+      failures,
+      draft: "",
       reply: sent,
     };
   }
