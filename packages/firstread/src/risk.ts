@@ -128,6 +128,18 @@ export function initialRisk(): RiskState {
 const max = (a: RiskLevel, b: RiskLevel): RiskLevel => (rank(a) >= rank(b) ? a : b);
 const SELF_STANDING: CrisisRoute[] = ["intent", "preparation"];
 
+/** Readable names for reasons shown to presenters and reviewers. */
+const ROUTE_NAMES: Record<CrisisRoute, string> = {
+  intent: "stated intent",
+  imminent: "signs of acting soon",
+  preparation: "preparation",
+  plan_means: "a plan with access to means",
+};
+const routeList = (routes: CrisisRoute[]): string => {
+  const names = routes.map((r) => ROUTE_NAMES[r]);
+  return names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : (names[0] ?? "");
+};
+
 /**
  * This turn's own reading, after the CRISIS context rule (part 2), with the reason. Exported so a
  * recheck of an earlier turn applies the same rules as a live turn.
@@ -141,19 +153,19 @@ export function reading(
   if (base !== "CRISIS") return { level: base, reason: `this message read as ${base}` };
   const routes = crisisRoutes(p);
   if (routes.some((r) => SELF_STANDING.includes(r))) {
-    return { level: "CRISIS", reason: `${routes.join(" + ")} signal` };
+    return { level: "CRISIS", reason: routeList(routes) };
   }
   const context =
     p.ideation >= config.contextIdeation ||
     p.self_harm >= config.contextSelfHarm ||
     atLeast(prev.level, "ELEVATED");
   if (!context) {
-    return { level: "ELEVATED", reason: `${routes.join(" + ")} signal without self-harm context, held at ELEVATED` };
+    return { level: "ELEVATED", reason: `${routeList(routes)}, but no self-harm context: held at ELEVATED` };
   }
   if (p.latest_adds_risk < config.acuteAdds) {
-    return { level: "ELEVATED", reason: `${routes.join(" + ")} signal echoing earlier messages, held at ELEVATED` };
+    return { level: "ELEVATED", reason: `${routeList(routes)}, but echoing earlier messages: held at ELEVATED` };
   }
-  return { level: "CRISIS", reason: `${routes.join(" + ")} signal with self-harm context` };
+  return { level: "CRISIS", reason: `${routeList(routes)}, with self-harm context` };
 }
 
 /** The next risk state after a user turn; `text` is the message (kept in the ledger if it raised concern). */
