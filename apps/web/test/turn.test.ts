@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { Draft } from "@/lib/companion";
 import { DEMO_REPLIES } from "@/lib/replies";
 import { type Session, emptySession } from "@/lib/session";
-import { DraftTimeoutError, type TurnDeps, runTurn } from "@/lib/turn";
+import { COMPANION_HISTORY_TURNS, DraftTimeoutError, STORED_TURNS, type TurnDeps, runTurn } from "@/lib/turn";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -162,6 +162,24 @@ describe("runTurn", () => {
       { role: "user", text: "i don't want to be here" },
       { role: "assistant", text: DEMO_REPLIES.safe },
     ]);
+  });
+});
+
+describe("history limits", () => {
+  it("gives the companion only recent turns, and caps what the session keeps", async () => {
+    const { session, guard } = setup();
+    session.conv.turns = Array.from({ length: 150 }, (_, i) => ({ role: i % 2 ? "assistant" : "user", text: `t${i}` }) as const);
+    let seen = 0;
+    await runTurn("hi", session, {
+      guard,
+      draft: async (input) => {
+        seen = input.history.length;
+        return { reply: "ok", exercise: null };
+      },
+    });
+    expect(seen).toBe(COMPANION_HISTORY_TURNS);
+    expect(session.conv.turns).toHaveLength(STORED_TURNS);
+    expect(session.conv.turns.at(-1)?.text).toBe("ok");
   });
 });
 

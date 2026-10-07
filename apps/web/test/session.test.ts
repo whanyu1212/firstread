@@ -25,6 +25,17 @@ describe("memorySessionStore", () => {
     expect((await store.get("a")).conv.level).toBe("CRISIS");
   });
 
+  it("keeps notes added after a snapshot was read", async () => {
+    const store = memorySessionStore();
+    const snapshot = await store.get("a"); // the next turn reads its session
+    await store.update("a", (s) => s.notes.push({ kind: "coping", text: "walks help", at: "" })); // background note
+    snapshot.conv.turns.push({ role: "user", text: "hi" });
+    await store.save("a", snapshot); // the turn saves its stale copy
+    const got = await store.get("a");
+    expect(got.notes.map((n) => n.text)).toEqual(["walks help"]);
+    expect(got.conv.turns).toHaveLength(1);
+  });
+
   it("update() changes the latest copy, not a stale one", async () => {
     const store = memorySessionStore();
     const s = emptySession();

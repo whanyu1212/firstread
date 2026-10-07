@@ -135,7 +135,7 @@ export class FirstRead {
     return {
       user,
       finish: (draft) => this.finish(conv, userMsg, draft, userOutcome, abort),
-      finishWithoutDraft: () => this.finishWithoutDraft(conv, userMsg, userOutcome),
+      finishWithoutDraft: () => this.finishWithoutDraft(conv, userMsg, userOutcome, abort),
     };
   }
 
@@ -243,8 +243,11 @@ export class FirstRead {
     conv: Conversation,
     userMsg: string,
     userCheck: Promise<Outcome<UserSignals>>,
+    abort: AbortController,
   ): Promise<TurnAudit> {
-    const user = await userCheck;
+    // The same bounded wait as finish(): a hung check times out and the turn fails closed.
+    const timer = setTimeout(() => abort.abort(), this.deadlineMs);
+    const user = await userCheck.finally(() => clearTimeout(timer));
     if (user.ok) conv.level = escalate(conv.level, assessLevel(user.signals));
     const failures: CheckFailure[] = user.ok ? [] : [{ check: "user", reason: user.reason }];
     const action = failClosedAction(conv.level);

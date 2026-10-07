@@ -280,6 +280,15 @@ describe("early user check and drafts that never arrive", () => {
     expect(audit.failures).toEqual([{ check: "user", reason: "unavailable" }]);
   });
 
+  it("finishWithoutDraft gives up on a hung user check at the deadline", async () => {
+    const client = new FakeClient();
+    client.behaviour.user = { hang: true };
+    const guard = new FirstRead({ client, deadlineMs: 50 });
+    const audit = await guard.startTurn(new Conversation(), "hi").finishWithoutDraft();
+    expect(audit.reply).toBe(HOLDING_REPLY);
+    expect(audit.failures).toEqual([{ check: "user", reason: "timeout" }]);
+  });
+
   it("crisisTurn answers at once with no checks, and only at CRISIS", () => {
     const { client, guard } = make();
     const conv = new Conversation();

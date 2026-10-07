@@ -17,6 +17,11 @@ import type { Draft } from "./companion";
 import { type Handoff, type Note, type Session, fromConversation, toConversation } from "./session";
 import { EXERCISES, type Exercise } from "./skills/exercises";
 
+/** Recent turns the companion sees. FirstRead keeps its own, shorter window for its checks. */
+export const COMPANION_HISTORY_TURNS = 30;
+/** Turns kept in the session, so a long-lived chat can't grow without bound. */
+export const STORED_TURNS = 100;
+
 /** asks_for_person at or above this records a handoff request. */
 export const ASKS_FOR_PERSON = 0.5;
 
@@ -85,7 +90,12 @@ export async function runTurn(
     // Neither promise rejects: the loser of the race below settles later, and an unhandled
     // rejection would take the process down.
     const drafted = deps
-      .draft({ history: conv.turns.map((t) => ({ ...t })), text, notes: session.notes, signal: agent.signal })
+      .draft({
+        history: conv.turns.slice(-COMPANION_HISTORY_TURNS).map((t) => ({ ...t })),
+        text,
+        notes: session.notes,
+        signal: agent.signal,
+      })
       .then(
         (d) => ({ ok: true as const, draft: d }),
         (error: unknown) => ({ ok: false as const, error }),
@@ -140,6 +150,7 @@ export async function runTurn(
   if (handoff) session.handoffs.push(handoff);
 
   session.conv = fromConversation(conv);
+  session.conv.turns = session.conv.turns.slice(-STORED_TURNS);
   timings.totalMs = now() - started;
   return { audit, exercise, handoff, shortCircuit, draftError, timings };
 }

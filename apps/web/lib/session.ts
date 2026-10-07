@@ -35,6 +35,12 @@ export interface SessionStore {
 
 export const MAX_NOTES = 20;
 
+/** `ours`, then anything in `theirs` with a key not already present. */
+function union<T>(ours: T[], theirs: T[], key: (item: T) => string): T[] {
+  const seen = new Set(ours.map(key));
+  return [...ours, ...theirs.filter((item) => !seen.has(key(item)))];
+}
+
 export const emptySession = (): Session => ({ conv: { turns: [], level: "NONE" }, notes: [], handoffs: [] });
 
 export function toConversation(state: Session["conv"]): Conversation {
@@ -65,7 +71,13 @@ export function memorySessionStore({ ttlMs = 2 * 60 * 60 * 1000, maxSessions = 5
   const put = (id: string, session: Session, now: number) => {
     const stored = current(id, now);
     const next = structuredClone(session);
-    if (stored && rank(stored.conv.level) > rank(next.conv.level)) next.conv.level = stored.conv.level;
+    if (stored) {
+      if (rank(stored.conv.level) > rank(next.conv.level)) next.conv.level = stored.conv.level;
+      // Notes and handoffs only accumulate, so keep any that were added after this copy was read
+      // (e.g. a background note saved while the next turn was running).
+      next.notes = union(next.notes, stored.notes, (n) => n.text).slice(0, MAX_NOTES);
+      next.handoffs = union(next.handoffs, stored.handoffs, (h) => `${h.at}|${h.reason}`);
+    }
     sessions.delete(id);
     sessions.set(id, { session: next, touched: now });
     for (const [key, entry] of sessions) if (now - entry.touched > ttlMs) sessions.delete(key);
