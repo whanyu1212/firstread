@@ -239,3 +239,64 @@ describe("clientConfig", () => {
     expect(() => clientConfig(undefined, {})).toThrow(/AI_GATEWAY_API_KEY/);
   });
 });
+
+describe("early user check and drafts that never arrive", () => {
+  it("exposes the user check before the turn is recorded", async () => {
+    const { client, guard } = make();
+    client.overrides.intent = 0.9;
+    const conv = new Conversation();
+    const pending = guard.startTurn(conv, "i've decided, it's tonight");
+    const user = await pending.user;
+    expect(user).toMatchObject({ ok: true, level: "CRISIS" });
+    expect(conv.level).toBe("NONE"); // nothing recorded yet
+    expect(conv.turns).toHaveLength(0);
+  });
+
+  it("finishWithoutDraft escalates at CRISIS without a reply check", async () => {
+    const { client, guard } = make();
+    client.overrides.intent = 0.9;
+    const conv = new Conversation();
+    const audit = await guard.startTurn(conv, "i've decided, it's tonight").finishWithoutDraft();
+    expect(audit).toMatchObject({ level: "CRISIS", action: "escalate", reply: CRISIS_REPLY, failures: [] });
+    expect(client.calls.filter((c) => c.check === "reply")).toHaveLength(0);
+    expect(conv.level).toBe("CRISIS");
+    expect(conv.turns.map((t) => t.role)).toEqual(["user", "assistant"]);
+  });
+
+  it("finishWithoutDraft below CRISIS sends the fallback and keeps the user check's level", async () => {
+    const { client, guard } = make();
+    client.overrides.ideation = 0.9; // ELEVATED
+    const conv = new Conversation();
+    const audit = await guard.startTurn(conv, "i don't want to be here").finishWithoutDraft();
+    expect(audit).toMatchObject({ level: "ELEVATED", reply: SAFE_REPLY });
+    expect(conv.level).toBe("ELEVATED");
+  });
+
+  it("finishWithoutDraft with the user check down sends the holding reply", async () => {
+    const { client, guard } = make();
+    client.behaviour.user = { error: new APIConnectionError("down") };
+    const audit = await guard.startTurn(new Conversation(), "hi").finishWithoutDraft();
+    expect(audit.reply).toBe(HOLDING_REPLY);
+    expect(audit.failures).toEqual([{ check: "user", reason: "unavailable" }]);
+  });
+
+  it("finishWithoutDraft gives up on a hung user check at the deadline", async () => {
+    const client = new FakeClient();
+    client.behaviour.user = { hang: true };
+    const guard = new FirstRead({ client, deadlineMs: 50 });
+    const audit = await guard.startTurn(new Conversation(), "hi").finishWithoutDraft();
+    expect(audit.reply).toBe(HOLDING_REPLY);
+    expect(audit.failures).toEqual([{ check: "user", reason: "timeout" }]);
+  });
+
+  it("crisisTurn answers at once with no checks, and only at CRISIS", () => {
+    const { client, guard } = make();
+    const conv = new Conversation();
+    expect(() => guard.crisisTurn(conv, "hi")).toThrow();
+    conv.level = "CRISIS";
+    const audit = guard.crisisTurn(conv, "thanks");
+    expect(audit).toMatchObject({ action: "escalate", reply: CRISIS_REPLY, level: "CRISIS" });
+    expect(client.calls).toHaveLength(0);
+    expect(conv.turns).toHaveLength(2);
+  });
+});

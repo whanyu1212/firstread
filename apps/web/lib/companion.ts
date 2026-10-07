@@ -1,59 +1,75 @@
 import "server-only";
 import { createOpenAI } from "@ai-sdk/openai";
-import { type ModelMessage, ToolLoopAgent, stepCountIs } from "ai";
-import type { StepSummary } from "./chat";
-import type { Session } from "./session";
-import { companionTools } from "./tools";
+import { Output, generateText } from "ai";
+import type { Turn } from "firstread";
+import { z } from "zod";
+import type { Note } from "./session";
+import { EXERCISE_IDS, type ExerciseId, exerciseIndex } from "./skills/exercises";
+import { supportLinesSkill } from "./skills/support-lines";
 
 /**
- * The companion is a demo harness, not the product: a supportive chat agent with a few tools,
- * whose final reply FirstRead checks. Model and reasoning effort are env-configurable so they can
- * be compared in rehearsal; the whole turn sits in front of the reply check.
+ * The companion is a demo harness, not the product: a supportive agent whose reply FirstRead
+ * checks. One model call per turn. It decides what to say and may pick an exercise; the runtime
+ * decides what to do (handoffs from FirstRead's signals, notes after the reply). A tool loop would
+ * add a full model call per tool, about 3.5-4s each on this model.
  */
+// gpt-6-sol at low reasons and answers in ~3.9s (p50) through the whole pipeline; gpt-6.1-sol at
+// low made the same safety decisions but took ~8s (Oct 7). Both are env-configurable.
 export const COMPANION_MODEL = process.env.COMPANION_MODEL ?? "gpt-6-sol";
-const REASONING_EFFORT = process.env.COMPANION_REASONING_EFFORT ?? "none";
-/** Model calls per turn, tool steps included. */
-const MAX_STEPS = 6;
+const REASONING_EFFORT = process.env.COMPANION_REASONING_EFFORT ?? "low";
 
-const INSTRUCTIONS = `You are a warm, supportive companion in a wellbeing chat app used in Singapore. \
-Listen, reflect back what the person shares, and ask gentle follow-up questions. Keep replies short: \
-two to four sentences. You are not a therapist and don't diagnose or give medical advice.
+function instructions(notes: Note[]): string {
+  const remembered = notes.length
+    ? `\n\nWhat helps this person, from earlier in this conversation:\n${notes.map((n) => `- ${n.text}`).join("\n")}`
+    : "";
+  return `You are a warm, supportive companion in a wellbeing chat app used in Singapore. Listen, \
+reflect back what the person shares, and ask gentle follow-up questions. Keep replies short: two to \
+four sentences. You are not a therapist and don't diagnose or give medical advice.
 
-Use your tools when they help, and not otherwise:
-- recall_notes when remembering what helps this person would make your reply better.
-- save_note when they tell you something that helps them cope, or how they like to be supported.
-- suggest_exercise when they feel anxious, panicky or overwhelmed and seem open to trying something. \
-Walk them through it in your own words.
-- get_support_resources whenever they mention thoughts of suicide or self-harm, say they're in \
-danger, or ask where to get help. Give the lines exactly as the tool returns them.
-- request_human_handoff when they ask for a real person, or you're worried about their safety.
+Whenever they mention thoughts of suicide or self-harm, say they're in danger, or ask where to get \
+help, give these lines exactly as written. Never give a phone number from memory.
+${supportLinesSkill()}
 
-Never give a phone number from memory, and never say a person is joining the chat.`;
+If they ask to talk to a real person, say honestly that no person can join this chat because it's a \
+demo, and give them the lines above so they can reach someone now. Never say a person is joining.
 
-/** If the step limit is reached mid-tool-use there's no final text; never send an empty reply. */
-const NO_TEXT_REPLY = "I'm here with you. Could you tell me a little more about how you're feeling?";
+When they feel anxious, panicky or overwhelmed and seem open to trying something, you can offer one \
+exercise by putting its id in "exercise". Introduce it in a sentence by name; its steps appear below \
+your reply, so don't list them or mention the app. Otherwise set "exercise" to null.
+${exerciseIndex()}${remembered}`;
+}
 
-export async function runCompanion({
+const DRAFT = z.object({
+  reply: z.string().describe("What you say to the person."),
+  exercise: z.enum(EXERCISE_IDS).nullable().describe("An exercise id from the list, or null."),
+});
+
+export interface Draft {
+  reply: string;
+  exercise: ExerciseId | null;
+}
+
+export async function draftReply({
   apiKey,
-  messages,
-  session,
+  history,
+  text,
+  notes,
   signal,
 }: {
   apiKey: string;
-  messages: ModelMessage[];
-  session: Session;
-  signal?: AbortSignal;
-}): Promise<{ text: string; steps: StepSummary[] }> {
-  const agent = new ToolLoopAgent({
+  /** The conversation as the user saw it: FirstRead's record, replacements included. */
+  history: Turn[];
+  text: string;
+  notes: Note[];
+  signal: AbortSignal;
+}): Promise<Draft> {
+  const { output } = await generateText({
     model: createOpenAI({ apiKey })(COMPANION_MODEL),
-    instructions: INSTRUCTIONS,
-    tools: companionTools(session),
-    stopWhen: stepCountIs(MAX_STEPS),
+    instructions: instructions(notes),
+    messages: [...history.map((t) => ({ role: t.role, content: t.text })), { role: "user" as const, content: text }],
+    output: Output.object({ schema: DRAFT, name: "companion_reply" }),
     providerOptions: { openai: { reasoningEffort: REASONING_EFFORT } },
+    abortSignal: signal,
   });
-  const result = await agent.generate({ messages, abortSignal: signal });
-  const steps = result.steps.flatMap((s) =>
-    s.toolResults.map((r) => ({ tool: r.toolName, input: r.input, output: r.output })),
-  );
-  return { text: result.text.trim() || NO_TEXT_REPLY, steps };
+  return { reply: output.reply.trim(), exercise: output.exercise };
 }

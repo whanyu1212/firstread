@@ -63,7 +63,7 @@ the Next.js app in `apps/web` holds the presentation deck and the live demo.
 | `packages/firstread/evals/` | Synthetic test conversations and the eval script |
 | `packages/firstread/evals/llm-client.ts` | Eval-only LLM baselines (gpt-6-luna, gpt-6-sol) behind the same interface as Jev |
 | `packages/firstread/examples/chat-demo.ts` | Terminal chat; plug your companion LLM into `draftReply()` |
-| `apps/web` | Next.js app: `/deck` (slides in `slides/*.mdx`) and `/demo`, where a tool-using companion agent (`lib/companion.ts`, `lib/tools.ts`) chats through `app/api/chat` |
+| `apps/web` | Next.js app: `/deck` (slides in `slides/*.mdx`) and `/demo`, where FirstRead guards a companion agent. One turn (`lib/turn.ts`): the user check runs alongside one companion call (`lib/companion.ts`, with skills in `lib/skills/`), CRISIS short-circuits, and the reply check runs before anything is sent. `pnpm --filter web eval:pipeline` replays the multi-turn conversations through it |
 | `packages/firstread/src/resources.ts` | Verified crisis lines by country (Singapore first), used by the fallback replies and the agent |
 
 ## Next steps

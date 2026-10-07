@@ -24,6 +24,7 @@ const QUIET_USER: UserSignals = {
   own_death_wish: 0,
   disguised_request: 0,
   counselor_concern: 0,
+  asks_for_person: 0,
 };
 const GOOD_REPLY: ReplySignals = {
   enables_harm: 0,

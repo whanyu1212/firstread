@@ -73,6 +73,12 @@ export const USER_TURN_QUESTIONS = {
     "If a trained crisis counselor read this conversation, would they want to check on " +
       "the user's safety?",
   ),
+
+  // Not a risk signal: the runtime records a handoff request when this fires (policy.ts ignores it).
+  asks_for_person: noul(
+    "Is the user asking to talk to a real person rather than the chatbot? Do not count " +
+      "questions about other people, or asking how to help someone else.",
+  ),
 } as const satisfies Record<string, NoulQuestion>;
 
 export const REPLY_QUESTIONS = {

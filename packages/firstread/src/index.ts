@@ -1,7 +1,7 @@
 /** FirstRead: audit every turn of a mental health companion before it reaches the user. */
 
 export { Conversation, FirstRead } from "./guard";
-export type { Check, CheckFailure, FirstReadOptions, PendingTurn, Role, Turn, TurnAudit } from "./guard";
+export type { Check, CheckFailure, FirstReadOptions, PendingTurn, Role, Turn, TurnAudit, UserCheck } from "./guard";
 export {
   GATEWAY_BASE_URL,
   GATEWAY_MODEL,
