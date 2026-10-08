@@ -1,7 +1,28 @@
+import { Latency } from "@/components/deck/Latency";
+import { Roc } from "@/components/deck/Roc";
+import { Build, Point, Points, Split } from "@/components/deck/steps";
+
+<Split
+  visual={
+    <div className="grid [&>*]:col-start-1 [&>*]:row-start-1">
+      <Build at={1} until={2} className="self-center">
+        <Roc at={1} />
+      </Build>
+      <Build at={2} className="self-center">
+        <Latency at={2} />
+      </Build>
+    </div>
+  }
+>
+
 <p className="act">Act 1, the pain point</p>
 
 # Why Jev
 
-- Calibrated yes/no probabilities, so thresholds mean something
-- 12 questions answered in **one** call
-- About **0.7s** a check, **$0.04** per 1,000 turns
+<Points>
+  <Point at={1} title="Calibrated yes/no probabilities,">so thresholds mean something.</Point>
+  <Point at={2} title="14 questions">about each message, answered in one call.</Point>
+  <Point at={2} title="About 0.5s a check">(median), and <strong>$0.04</strong> per 1,000 turns.</Point>
+</Points>
+
+</Split>

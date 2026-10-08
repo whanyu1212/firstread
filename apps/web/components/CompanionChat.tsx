@@ -1,10 +1,8 @@
 "use client";
 
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, useState } from "react";
 import type { ChatData, ChatMessage } from "@/lib/chat";
-import { LEVEL_LABEL } from "./levels";
-import { OpenAIKeyField } from "./OpenAIKeyField";
-import { type CompanionChatState, useCompanionChat } from "./useCompanionChat";
+import type { CompanionChatState } from "./useCompanionChat";
 
 /**
  * The route's errors are short and written for the user: a JSON body before the stream starts (no
@@ -118,58 +116,3 @@ export function Composer({ chat }: { chat: CompanionChatState }) {
     </form>
   );
 }
-
-/** A standalone chat (the deck's live slide): its own state, with a line under each reply. */
-export function CompanionChat({ compact = false }: { compact?: boolean }) {
-  const chat = useCompanionChat();
-  return <ChatView chat={chat} compact={compact} />;
-}
-
-/** The chat on its own, for where no margin of notes fits: one line per reply says what FirstRead did. */
-function ChatView({ chat, compact = false }: { chat: CompanionChatState; compact?: boolean }) {
-  const { messages, busy, error, key, setKey, forgetKey } = chat;
-  const scroller = useRef<HTMLDivElement>(null);
-
-  // Keep the latest turn in view as messages come in.
-  useEffect(() => {
-    const el = scroller.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [messages, busy]);
-
-  return (
-    <div className={`flex flex-col rounded-xl border border-line bg-canvas ${compact ? "h-[26rem]" : "h-[min(40rem,70dvh)]"}`}>
-      <div className="border-b border-line p-4">
-        <OpenAIKeyField value={key} onSave={setKey} onForget={forgetKey} />
-      </div>
-      <div ref={scroller} className="flex-1 space-y-4 overflow-y-auto p-4" aria-live="polite">
-        {messages.length === 0 && <p className="text-muted">Say hello to the companion.</p>}
-        {messages.map((m, i) => {
-          if (m.role === "user") return <UserBubble key={m.id} text={messageText(m)} />;
-          const audit = dataPart(m, "audit");
-          const timing = dataPart(m, "timing");
-          return (
-            <div key={m.id}>
-              <CompanionReply message={m} pending={busy && i === messages.length - 1} />
-              {audit && timing && (
-                <p className="mt-1.5 font-mono text-xs text-muted">
-                  {CAPTION[audit.action]} at {LEVEL_LABEL[audit.level]}, in {secs(timing.totalMs)}
-                </p>
-              )}
-            </div>
-          );
-        })}
-        {busy && messages.at(-1)?.role === "user" && <CompanionReply message={undefined} pending />}
-        {error && <p className="text-sm text-danger">{errorMessage(error)}</p>}
-      </div>
-      <div className="p-3">
-        <Composer chat={chat} />
-      </div>
-    </div>
-  );
-}
-
-const CAPTION = {
-  send: "FirstRead sent the reply as written",
-  replace: "FirstRead replaced the reply with a safe one",
-  escalate: "FirstRead sent the crisis reply",
-} as const;

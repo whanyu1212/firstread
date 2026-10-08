@@ -1,7 +1,28 @@
+import { Calibration } from "@/components/deck/Calibration";
+import { Build, Point, Points, Split } from "@/components/deck/steps";
+import { TurnTimeline } from "@/components/deck/TurnTimeline";
+
+<Split
+  visual={
+    <div className="space-y-8">
+      <Build at={1}>
+        <TurnTimeline at={1} />
+      </Build>
+      <Build at={3}>
+        <Calibration at={3} />
+      </Build>
+    </div>
+  }
+>
+
 <p className="act">Act 1, the pain point</p>
 
 # What the check has to be
 
-- **Fast enough for every turn.** It sits in front of every reply.
-- **Cheap enough for every turn.** Thousands of turns a day, not a sampled few.
-- **Calibrated.** A threshold of 0.3 should mean the same thing on every message.
+<Points>
+  <Point at={1} title="Fast enough for every turn.">It sits in front of every reply.</Point>
+  <Point at={2} title="Cheap enough for every turn.">Thousands of turns a day, not a sampled few.</Point>
+  <Point at={3} title="Calibrated.">A threshold of 0.3 should mean the same thing on every message.</Point>
+</Points>
+
+</Split>

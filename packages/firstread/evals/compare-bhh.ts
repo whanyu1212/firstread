@@ -17,23 +17,12 @@ import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { type RiskLevel, type UserSignals, atLeast } from "../src";
+import { NEGATIVE, POSITIVE, auc, percentile, score } from "./bhh-metrics";
 import type { BhhLabel } from "./fetch-bhh";
 
 type Row = { id: string; label: BhhLabel; ms: number; got: RiskLevel | null; signals: UserSignals | null };
 type Run = { name: string; file: string; rows: Map<string, Row> };
 
-const SELF_HARM_KEYS = [
-  "ideation",
-  "self_harm",
-  "method_seeking",
-  "plan",
-  "means",
-  "intent",
-  "preparation",
-  "imminent",
-] as const satisfies readonly (keyof UserSignals)[];
-const POSITIVE: BhhLabel[] = ["suicidal_ideation", "self_harm"];
-const NEGATIVE: BhhLabel = "no_crisis";
 const FAR_TARGETS = [0.03, 0.05, 0.1];
 const BOOTSTRAPS = 2000;
 
@@ -63,15 +52,6 @@ function latestRuns(split: string): string[] {
   return [...latest.values()];
 }
 
-const score = (s: UserSignals) => Math.max(...SELF_HARM_KEYS.map((k) => s[k]));
-
-/** AUC as P(score of a positive > score of a negative), ties counting half. */
-function auc(pos: number[], neg: number[]): number {
-  let wins = 0;
-  for (const p of pos) for (const n of neg) wins += p > n ? 1 : p === n ? 0.5 : 0;
-  return wins / (pos.length * neg.length);
-}
-
 /** Recall at the lowest threshold whose false-alarm rate is at most `far`, and that FAR. */
 function recallAtFar(pos: number[], neg: number[], far: number): { recall: number; far: number } {
   const thresholds = [...new Set([...pos, ...neg, Number.POSITIVE_INFINITY])].sort((a, b) => a - b);
@@ -82,10 +62,6 @@ function recallAtFar(pos: number[], neg: number[], far: number): { recall: numbe
   return { recall: 0, far: 0 };
 }
 
-const percentile = (xs: number[], p: number) => {
-  const s = [...xs].sort((a, b) => a - b);
-  return s[Math.min(s.length - 1, Math.floor(p * s.length))] ?? 0;
-};
 const pct = (x: number) => `${(100 * x).toFixed(0)}%`;
 const ci = (xs: number[], f: (x: number) => string) => `[${f(percentile(xs, 0.025))}, ${f(percentile(xs, 0.975))}]`;
 
