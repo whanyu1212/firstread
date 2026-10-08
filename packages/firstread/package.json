@@ -19,7 +19,8 @@
     "check:conversations": "tsx evals/check-conversations.ts",
     "sweep:risk": "tsx evals/sweep-risk.ts",
     "probe:limits": "tsx evals/probe-limits.ts",
-    "demo": "tsx examples/chat-demo.ts"
+    "demo": "tsx examples/chat-demo.ts",
+    "export:deck": "tsx evals/export-deck.ts"
   },
   "dependencies": {
     "@typesafe-ai/sdk": "^0.6.0"
