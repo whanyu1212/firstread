@@ -65,7 +65,7 @@ export function DemoClient() {
       <Controls chat={chat} keyOpen={keyOpen} onToggleKey={() => setKeyOpen(!keyOpen)} />
       <DemoNotice />
       {(keyOpen || (!chat.key && chat.error)) && (
-        <div className="glass rounded-xl p-4">
+        <div className="glass shrink-0 rounded-xl p-4">
           <OpenAIKeyField
             value={chat.key}
             onSave={(k) => {
@@ -77,7 +77,7 @@ export function DemoClient() {
         </div>
       )}
 
-      <section aria-label="Conversation" className="glass flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl">
+      <section aria-label="Conversation" className="glass flex min-h-80 flex-1 flex-col overflow-hidden rounded-2xl">
         {rows.length > 0 && (
           <header className={`${ROW} gutter`}>
             <div className="col-span-2 px-4 pt-3 pb-2 lg:col-span-1 lg:col-start-3 lg:px-5 lg:py-4">
@@ -142,7 +142,7 @@ export function DemoClient() {
 
 function Controls({ chat, keyOpen, onToggleKey }: { chat: CompanionChatState; keyOpen: boolean; onToggleKey: () => void }) {
   return (
-    <div className="glass flex flex-wrap items-center gap-2 rounded-2xl px-3 py-2 text-sm">
+    <div className="glass flex shrink-0 flex-wrap items-center gap-2 rounded-2xl px-3 py-2 text-sm">
       <h1 className="mr-2">
         <Link href="/" className="block rounded-md">
           <Logo />
