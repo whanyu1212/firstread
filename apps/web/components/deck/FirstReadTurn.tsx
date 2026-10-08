@@ -21,8 +21,10 @@ const timing = turn.data.timing!;
 const replyCheckMs = timing.totalMs - (timing.draftMs ?? 0);
 const s = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
 
-// Narrower notes on a phone; the margin behind them matches: notes plus half the rule column.
-const ROW = "grid grid-cols-[minmax(0,1fr)_2rem_9rem] items-start sm:grid-cols-[minmax(0,1fr)_2.5rem_14rem]";
+// On a phone each note folds under its message (a notes column leaves the messages too narrow);
+// from sm, notes sit in the margin beside them, with the margin behind them: notes plus half the
+// rule column.
+const ROW = "grid grid-cols-[minmax(0,1fr)_2rem] items-start sm:grid-cols-[minmax(0,1fr)_2.5rem_14rem]";
 
 export function FirstReadTurn() {
   const step = useStep();
@@ -33,7 +35,7 @@ export function FirstReadTurn() {
     <figure className="overflow-hidden rounded-xl border border-line bg-canvas">
       <div className="relative">
         {/* The margin FirstRead writes in, from the middle of the rule. */}
-        <div className="absolute inset-y-0 right-0 w-[10rem] bg-margin sm:w-[15.25rem]" aria-hidden="true" />
+        <div className="absolute inset-y-0 right-0 hidden w-[15.25rem] bg-margin sm:block" aria-hidden="true" />
 
         {/* The user's message, and FirstRead reading it. */}
         <div className={`relative ${ROW} pt-6`}>
@@ -119,7 +121,7 @@ function Note({ show, delay, children }: { show: boolean; delay: number; childre
   const t = useTransition();
   return (
     <motion.p
-      className="px-4 pt-1.5 text-base leading-snug"
+      className="px-4 pt-1.5 text-base leading-snug max-sm:col-start-1 max-sm:row-start-2 max-sm:mx-4 max-sm:mt-2 max-sm:rounded-lg max-sm:bg-margin max-sm:py-2"
       initial={false}
       animate={show ? { opacity: 1, x: 0 } : { opacity: 0, x: -8 }}
       transition={show ? t(DURATION.base, delay) : t(0)}
@@ -134,9 +136,11 @@ function Draft({ replaced, delay, reply }: { replaced: boolean; delay: number; r
   const t = useTransition();
   const first = reply.split(/(?<=[.!?])\s/)[0];
   return (
-    <div className="relative">
+    // Both states share one grid cell, so the row is as tall as the taller one: on a narrow column
+    // the reply wraps past the skeleton's height and would otherwise spill over what's below.
+    <div className="grid [&>*]:col-start-1 [&>*]:row-start-1">
       <motion.div
-        className="space-y-2 rounded-xl border border-dashed border-muted/60 px-4 py-3"
+        className="space-y-2 self-start rounded-xl border border-dashed border-muted/60 px-4 py-3"
         initial={false}
         animate={{ opacity: replaced ? 0 : 1 }}
         transition={replaced ? t(DURATION.fast, delay) : t(0)}
@@ -147,7 +151,7 @@ function Draft({ replaced, delay, reply }: { replaced: boolean; delay: number; r
         <span className="block h-2.5 w-3/4 rounded bg-raised" />
       </motion.div>
       <motion.p
-        className="absolute inset-0 text-lg leading-snug"
+        className="text-lg leading-snug"
         initial={false}
         animate={{ opacity: replaced ? 1 : 0 }}
         transition={replaced ? t(DURATION.base, delay + 0.2) : t(0)}
