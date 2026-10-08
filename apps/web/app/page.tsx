@@ -5,6 +5,8 @@ import { TurnPreview } from "@/components/TurnPreview";
 import bhh from "@/slides/data/bhh.json";
 
 const EVENT_URL = "https://luma.com/ltjmoydo";
+// Grey text outside the glass sits on the glow, so it is darker than text-muted to stay above 4.5:1.
+const ON_GLOW = "text-ink/75";
 
 // Every number on the page is read from the deck's chart data or the question set, not typed in.
 const jev = bhh.runs.find((r) => r.id === "jev")!;
@@ -79,7 +81,7 @@ export default function Home() {
 
         <section className="mt-14 grid items-center gap-10 lg:mt-20 lg:grid-cols-[minmax(0,13fr)_minmax(0,12fr)]">
           <div>
-            <h1 className="text-4xl leading-[1.05] font-semibold tracking-[-0.03em] sm:text-6xl">
+            <h1 className="text-4xl leading-[1.05] font-semibold tracking-[-0.03em] sm:text-6xl lg:text-5xl xl:text-6xl">
               What would Jev do?
               <br />
               Read every turn first.
@@ -87,7 +89,7 @@ export default function Home() {
             <p className="mt-6 max-w-[34em] text-xl leading-relaxed">
               FirstRead is a safety layer that reads every turn of a mental health companion.
             </p>
-            <p className="mt-4 max-w-[34em] text-lg leading-relaxed text-muted">
+            <p className={`mt-4 max-w-[34em] text-lg leading-relaxed ${ON_GLOW}`}>
               A companion agent talks to people at their most vulnerable. Before any reply goes out, FirstRead checks
               the person's message for signs of self-harm risk, and the companion's draft in case it ignores the risk
               or makes it worse.
@@ -113,7 +115,7 @@ export default function Home() {
               </div>
             ))}
           </div>
-          <p className="mt-4 text-sm text-muted">
+          <p className={`mt-4 text-sm ${ON_GLOW}`}>
             Benchmark: the Between Help and Harm test split. Jev and {luna.name} answered the same questions about the
             same messages.
           </p>
@@ -145,7 +147,7 @@ export default function Home() {
           ))}
         </section>
 
-        <footer className="mt-16 border-t border-ink/10 pt-6 text-sm text-muted">
+        <footer className={`mt-16 border-t border-ink/10 pt-6 text-sm ${ON_GLOW}`}>
           FirstRead flags risk and routes conversations to people. It doesn't diagnose, and it isn't a replacement for
           human crisis support.
         </footer>
@@ -156,15 +158,15 @@ export default function Home() {
 
 /**
  * Soft colour behind the glass, so it has something to frost. Still, and fixed to the viewport.
- * Sized to the viewport's width and fainter on a phone: otherwise they cover the page there and take
- * the grey text outside the glass below 4.5:1.
+ * Sized to the viewport's width, and fainter until the layout has two columns, where they'd
+ * otherwise sit behind most of the text.
  */
 function Glow() {
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden="true">
-      <div className="absolute -top-[12vw] -left-[10vw] size-[40vw] rounded-full bg-glow-blue opacity-60 blur-[max(7vw,48px)] sm:opacity-90" />
-      <div className="absolute top-1/4 -right-[12vw] size-[44vw] rounded-full bg-glow-sage opacity-60 blur-[max(7vw,48px)] sm:opacity-90" />
-      <div className="absolute -bottom-[14vw] left-1/3 size-[35vw] rounded-full bg-glow-blue opacity-50 blur-[max(7vw,48px)] sm:opacity-70" />
+      <div className="absolute -top-[12vw] -left-[10vw] size-[40vw] rounded-full bg-glow-blue opacity-60 blur-[max(7vw,48px)] lg:opacity-90" />
+      <div className="absolute top-1/4 -right-[12vw] size-[44vw] rounded-full bg-glow-sage opacity-60 blur-[max(7vw,48px)] lg:opacity-90" />
+      <div className="absolute -bottom-[14vw] left-1/3 size-[35vw] rounded-full bg-glow-blue opacity-50 blur-[max(7vw,48px)] lg:opacity-70" />
     </div>
   );
 }
