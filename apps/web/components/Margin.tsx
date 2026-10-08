@@ -1,7 +1,8 @@
 "use client";
 
 import type { RiskLevel } from "firstread";
-import { useState } from "react";
+import { useReducedMotion } from "motion/react";
+import { type ReactNode, useEffect, useState } from "react";
 import type { ChatData, ChatMessage } from "@/lib/chat";
 import { dataPart, secs } from "./CompanionChat";
 import { LEVEL_COLOR, LEVEL_LABEL, LEVEL_MEANING, LEVEL_ORDER } from "./levels";
@@ -110,10 +111,10 @@ export function NowSummary({ risk, waiting = false }: { risk: ChatData["risk"] |
   );
 }
 
-/** How to read the margin: the rule's colours, the bars and the evidence line. */
-export function MarginKey({ thresholds }: { thresholds: ChatData["risk"]["thresholds"] | undefined }) {
+/** How to read the margin: the rule's colours, and which colour is Jev. */
+export function MarginKey() {
   return (
-    <div className="space-y-2 text-xs text-muted">
+    <div className="space-y-1.5 text-xs text-muted">
       <ul className="flex flex-wrap gap-x-3 gap-y-1" aria-label="Levels">
         {LEVEL_ORDER.map((l) => (
           <li key={l} className="flex items-center gap-1.5">
@@ -123,10 +124,7 @@ export function MarginKey({ thresholds }: { thresholds: ChatData["risk"]["thresh
         ))}
       </ul>
       <p>
-        Bars are Jev's answers, as probabilities. The evidence line is FirstRead's own measure, not a probability
-        {thresholds
-          ? `: its ticks are where it raises the level, to WATCH at ${thresholds.watch.toFixed(1)} and ELEVATED at ${thresholds.elevated.toFixed(1)}.`
-          : "."}
+        <span className="font-semibold text-accent">Blue is Jev.</span> Its answers are probabilities, from 0 to 1.
       </p>
     </div>
   );
@@ -157,41 +155,51 @@ function replyLine(audit: ChatData["audit"]): string {
   return "Sent the crisis reply.";
 }
 
-function timingLine(audit: ChatData["audit"], timing: ChatData["timing"]): string {
-  if (audit.shortCircuit === "already-crisis") return `Replied in ${secs(timing.totalMs)}, with no checks needed.`;
-  const read = audit.userSignals && timing.checkMs !== null ? `Read in ${secs(timing.checkMs)}. ` : "";
-  return `${read}Reply shown after ${secs(timing.totalMs)}.`;
-}
-
 /**
- * The note beside one turn. While the turn is pending, it shows how far FirstRead has got.
+ * The note beside one turn: what FirstRead decided, and the strip showing what Jev did and when.
+ * Jev's answers and the evidence fold under one toggle, so a note stays about as tall as its turn.
  * `compact` keeps the headline, the reply and the timing: for the deck, where the bars won't read.
  */
 export function TurnNote({
   reply,
   before,
   compact = false,
+  startedAt,
+  live = false,
 }: {
   reply: ChatMessage | undefined;
   before: RiskLevel | null;
   compact?: boolean;
+  /** When the user's message was sent, so the strip can run live while the turn is pending. */
+  startedAt?: number;
+  /** The turn is still in flight (not abandoned after an error). */
+  live?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
   const check = reply && dataPart(reply, "check");
   const audit = reply && dataPart(reply, "audit");
   const risk = reply && dataPart(reply, "risk");
   const timing = reply && dataPart(reply, "timing");
 
   if (!audit || !risk || !timing) {
-    const read = check
-      ? check.ok
-        ? `Read your message: ${LEVEL_LABEL[check.level]}, in ${secs(check.ms)}.`
-        : "Couldn't read your message in time. No unchecked reply will go out."
-      : "Reading your message…";
+    if (compact) {
+      const read = check
+        ? check.ok
+          ? `Read your message: ${LEVEL_LABEL[check.level]}, in ${secs(check.ms)}.`
+          : "Couldn't read your message in time. No unchecked reply will go out."
+        : "Reading your message…";
+      return (
+        <div className="text-sm" aria-live="polite">
+          <p className={check ? "font-medium" : "text-muted motion-safe:animate-node-wait"}>{read}</p>
+          {check && <p className="mt-1 text-muted motion-safe:animate-node-wait">Checking the companion's reply before it's shown…</p>}
+        </div>
+      );
+    }
     return (
-      <div className="text-sm" aria-live="polite">
-        <p className={check ? "font-medium" : "text-muted motion-safe:animate-node-wait"}>{read}</p>
-        {check && <p className="mt-1 text-muted motion-safe:animate-node-wait">Checking the companion's reply before it's shown…</p>}
+      <div className="space-y-2.5" aria-live="polite">
+        <p className="font-semibold tracking-tight">
+          {check ? (check.ok ? `Read as ${LEVEL_LABEL[check.level]}` : "Couldn't read this message") : "Reading your message…"}
+        </p>
+        <JevStrip check={check} startedAt={startedAt} live={live} />
       </div>
     );
   }
@@ -211,86 +219,204 @@ export function TurnNote({
   const handoff = reply && dataPart(reply, "handoff");
   const exercise = reply && dataPart(reply, "exercise");
   const user = audit.userSignals;
-  const topUser = user
+  const userRows = user
     ? Object.entries(user)
         .filter(([k]) => k in USER_SIGNAL_LABELS)
         .sort((a, b) => b[1] - a[1])
-        .slice(0, 2)
+        .map(([k, v]) => [USER_SIGNAL_LABELS[k]!, v] as [string, number])
     : [];
   const replyRows = audit.replySignals
-    ? Object.entries(audit.replySignals).filter(([k]) => k in REPLY_SIGNAL_LABELS).sort((a, b) => b[1] - a[1])
+    ? Object.entries(audit.replySignals)
+        .filter(([k]) => k in REPLY_SIGNAL_LABELS)
+        .sort((a, b) => b[1] - a[1])
+        .map(([k, v]) => [REPLY_SIGNAL_LABELS[k]!, v] as [string, number])
     : [];
+  const strongest = userRows[0];
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       <div>
-        <p className="flex items-baseline justify-between gap-3">
+        <p className="flex items-start justify-between gap-3">
           <span className="font-semibold tracking-tight">{title}</span>
-          <button
-            type="button"
-            onClick={() => setOpen(!open)}
-            aria-expanded={open}
-            className="shrink-0 text-sm text-accent lg:hidden"
-          >
-            {open ? "Hide notes" : "Show notes"}
-          </button>
+          <Decision audit={audit} />
         </p>
         {reason && <p className="mt-0.5 text-sm text-muted">{reason}</p>}
       </div>
 
-      <div className={`space-y-3 ${open ? "" : "hidden"} lg:block`}>
-        <p className="text-sm">{replyLine(audit)}</p>
-        {audit.failures.length > 0 && (
-          <p className="text-sm text-danger">
-            The {audit.failures.map((f) => `${f.check} check (${f.reason})`).join(" and ")} didn't answer, so FirstRead
-            failed closed.
-          </p>
-        )}
+      <JevStrip check={check} audit={audit} timing={timing} />
 
-        {user && (
-          <Bars
-            rows={[
-              ["This message adds", user.latest_adds_risk],
-              ...topUser.map(([k, v]) => [USER_SIGNAL_LABELS[k]!, v] as [string, number]),
-            ]}
-          />
-        )}
-        {audit.action === "replace" && audit.failures.length === 0 && (
-          <Bars caption="The reply check" rows={replyRows.map(([k, v]) => [REPLY_SIGNAL_LABELS[k]!, v])} />
-        )}
+      {audit.failures.length > 0 && (
+        <p className="text-sm text-danger">
+          The {audit.failures.map((f) => `${f.check} check (${f.reason})`).join(" and ")} didn't answer, so FirstRead
+          failed closed.
+        </p>
+      )}
+      {strongest && <Bars caption="Jev's strongest answer about this message" rows={[strongest]} />}
+      {(handoff || exercise) && (
+        <ul className="space-y-1 text-sm">
+          {handoff && <li>Recorded a request for a person. {handoff.reason}. No one is on call for the demo.</li>}
+          {exercise && <li>Offered an exercise: {exercise.name}.</li>}
+        </ul>
+      )}
 
-        <Evidence score={risk.score} thresholds={risk.thresholds} />
+      <details className="text-sm">
+        <summary className="cursor-pointer text-accent">All of Jev's answers, and the evidence</summary>
+        <div className="mt-2 space-y-3">
+          {user && <Bars caption="Your message" rows={[["This message adds", user.latest_adds_risk], ...userRows]} />}
+          {replyRows.length > 0 && <Bars caption="The companion's reply" rows={replyRows} />}
+          <Evidence score={risk.score} thresholds={risk.thresholds} />
+        </div>
+      </details>
+    </div>
+  );
+}
 
-        {(handoff || exercise) && (
-          <ul className="space-y-1 text-sm">
-            {handoff && <li>Recorded a request for a person: {handoff.reason.toLowerCase()}. No one is on call for the demo.</li>}
-            {exercise && <li>Offered an exercise: {exercise.name}.</li>}
-          </ul>
-        )}
+/** The decision for the turn, as a badge: what the person was actually shown. */
+function Decision({ audit }: { audit: ChatData["audit"] }) {
+  const [label, style] =
+    audit.failures.length > 0 && audit.action !== "escalate"
+      ? ["Held back", "border border-danger text-danger"]
+      : audit.action === "send"
+        ? ["Sent", "border border-line bg-canvas text-ink"]
+        : audit.action === "replace"
+          ? ["Replaced", "bg-ink text-canvas"]
+          : ["Crisis reply", "bg-danger text-white"];
+  return <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${style}`}>{label}</span>;
+}
 
-        <p className="font-mono text-xs text-muted">{timingLine(audit, timing)}</p>
+/**
+ * Where one turn's time went, in two lanes: the companion writing its draft, and Jev reading the
+ * message alongside it, then checking the draft. Real timings from the turn; while the turn is in
+ * flight it runs live. Blue is Jev, as in the bars.
+ */
+export function JevStrip({
+  check,
+  audit,
+  timing,
+  startedAt,
+  live = false,
+}: {
+  check: ChatData["check"] | undefined;
+  audit?: ChatData["audit"];
+  timing?: ChatData["timing"];
+  startedAt?: number;
+  live?: boolean;
+}) {
+  const reduce = useReducedMotion();
+  const [now, setNow] = useState(() => Date.now());
+  const done = Boolean(audit && timing);
+  useEffect(() => {
+    if (done || !live || reduce) return;
+    const id = setInterval(() => setNow(Date.now()), 100);
+    return () => clearInterval(id);
+  }, [done, live, reduce]);
 
-        {(user || replyRows.length > 0) && (
-          <details className="text-sm">
-            <summary className="cursor-pointer text-accent">All of Jev's answers</summary>
-            <div className="mt-2 space-y-3">
-              {user && (
-                <Bars
-                  caption="Your message"
-                  rows={Object.entries(user)
-                    .filter(([k]) => k in USER_SIGNAL_LABELS)
-                    .sort((a, b) => b[1] - a[1])
-                    .map(([k, v]) => [USER_SIGNAL_LABELS[k]!, v])}
-                />
-              )}
-              {replyRows.length > 0 && (
-                <Bars caption="The companion's reply" rows={replyRows.map(([k, v]) => [REPLY_SIGNAL_LABELS[k]!, v])} />
-              )}
-            </div>
-          </details>
+  if (audit?.shortCircuit === "already-crisis") {
+    return (
+      <p className="text-sm text-muted">
+        No checks this turn: the conversation is already at CRISIS, so the crisis reply went out at once.
+      </p>
+    );
+  }
+
+  const read = check ? check.ms / 1000 : timing?.checkMs != null ? timing.checkMs / 1000 : null;
+  const readFailed = (check && !check.ok) || audit?.failures.some((f) => f.check === "user");
+  const replyFailed = audit?.failures.some((f) => f.check === "reply") ?? false;
+  const s = (sec: number) => `${sec.toFixed(1)}s`;
+
+  let companion: Span;
+  let jev: Span[];
+  let axis: number;
+  let sentence = "";
+  if (audit && timing) {
+    const total = timing.totalMs / 1000;
+    const draft = timing.draftMs !== null ? timing.draftMs / 1000 : null;
+    axis = total;
+    if (audit.shortCircuit === "crisis") {
+      const at = read ?? total;
+      companion = { from: 0, to: at, stopped: true };
+      jev = [{ from: 0, to: at }];
+      sentence = `Jev read your message in ${s(at)} and found signs of crisis, so the companion was stopped and the crisis reply went out.`;
+    } else if (draft === null) {
+      companion = { from: 0, to: total, stopped: true };
+      jev = read !== null ? [{ from: 0, to: read, failed: readFailed }] : [];
+      sentence = `The companion didn't reply, so FirstRead sent its own reply after ${s(total)}.`;
+    } else {
+      companion = { from: 0, to: draft };
+      jev = [
+        ...(read !== null ? [{ from: 0, to: read, failed: readFailed }] : []),
+        { from: draft, to: total, failed: replyFailed },
+      ];
+      sentence = readFailed
+        ? `Jev didn't answer about your message in time, so the companion's reply was held back. Shown after ${s(total)}.`
+        : replyFailed
+          ? `Jev read your message in ${s(read ?? 0)} while the companion wrote, but didn't answer the reply check in time, so the reply was held back. Shown after ${s(total)}.`
+          : `Jev read your message in ${s(read ?? 0)} while the companion wrote for ${s(draft)}, then checked the reply in ${s(total - draft)}. Shown after ${s(total)}.`;
+    }
+  } else if (reduce) {
+    // Nothing grows with reduced motion: the companion's lane is shown as still writing, and Jev's
+    // read appears once it has answered.
+    axis = Math.max(2 * (read ?? 0), 2);
+    companion = { from: 0, to: axis, running: true };
+    jev = read !== null ? [{ from: 0, to: read, failed: readFailed }] : [];
+  } else {
+    const elapsed = startedAt ? Math.max(0, (now - startedAt) / 1000) : 0;
+    // Headroom past the elapsed time, so the companion's lane visibly advances and Jev's read stays
+    // put; most turns take 3–6s. The scale snaps to the real total once the turn is done.
+    axis = Math.max(6, elapsed + 1);
+    companion = { from: 0, to: Math.max(elapsed, read ?? 0), running: true };
+    jev = [read !== null ? { from: 0, to: read, failed: readFailed } : { from: 0, to: elapsed, running: true }];
+  }
+  if (!done) {
+    sentence =
+      read === null
+        ? "Jev is reading your message while the companion writes."
+        : readFailed
+          ? "Jev didn't answer about your message in time. No unchecked reply will go out."
+          : `Jev read your message in ${s(read)}. Next it checks the companion's reply before it's shown.`;
+  }
+
+  const pct = (sec: number) => `${Math.min(100, (100 * sec) / axis)}%`;
+  return (
+    <figure>
+      <div className="grid grid-cols-[4.75rem_minmax(0,1fr)] items-center gap-x-2 gap-y-1.5 text-xs" aria-hidden="true">
+        <span className="text-muted">Companion</span>
+        <Lane>
+          <Segment span={companion} pct={pct} color="bg-ink/25" />
+        </Lane>
+        <span className="font-semibold text-accent">Jev</span>
+        {jev.length > 0 && jev.every((j) => j.failed) ? (
+          // Failed checks can fail fast (Jev down), too short to see as a segment.
+          <span className="leading-none font-medium text-danger">No answer</span>
+        ) : (
+          <Lane>
+            {jev.map((j, i) => (
+              <Segment key={i} span={j} pct={pct} color="bg-accent" />
+            ))}
+          </Lane>
         )}
       </div>
-    </div>
+      <figcaption className="mt-1.5 text-sm leading-snug text-muted">{sentence}</figcaption>
+    </figure>
+  );
+}
+
+type Span = { from: number; to: number; running?: boolean; stopped?: boolean; failed?: boolean };
+
+function Lane({ children }: { children: ReactNode }) {
+  return <span className="relative block h-2 rounded-full bg-line/70">{children}</span>;
+}
+
+function Segment({ span, pct, color }: { span: Span; pct: (sec: number) => string; color: string }) {
+  const fill = span.failed
+    ? "bg-[repeating-linear-gradient(135deg,var(--color-danger)_0_3px,transparent_3px_6px)]"
+    : // Still running: faint, and pulsing unless motion is reduced.
+      `${color} ${span.running ? "opacity-50 motion-safe:animate-node-wait" : ""}`;
+  return (
+    <span
+      className={`absolute inset-y-0 rounded-full ${fill} ${span.stopped ? "rounded-r-none border-r-2 border-ink" : ""}`}
+      style={{ left: pct(span.from), width: `max(4px, calc(${pct(span.to)} - ${pct(span.from)}))` }}
+    />
   );
 }
 
@@ -336,6 +462,10 @@ function Evidence({ score, thresholds }: { score: number; thresholds: ChatData["
           <span key={t} className="absolute top-0 h-full w-px bg-muted" style={{ left: at(t) }} />
         ))}
       </div>
+      <p className="mt-1.5 text-muted">
+        FirstRead's own measure, not a probability. The ticks are where it raises the level: WATCH at{" "}
+        {thresholds.watch.toFixed(1)}, ELEVATED at {thresholds.elevated.toFixed(1)}.
+      </p>
     </div>
   );
 }

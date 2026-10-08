@@ -1,10 +1,13 @@
 "use client";
 
 import type { RiskLevel } from "firstread";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "@/lib/chat";
 import { SCENARIOS } from "@/lib/scenarios";
 import { Composer, CompanionReply, dataPart, errorMessage, messageText, UserBubble } from "./CompanionChat";
+import { DemoNotice } from "./DemoNotice";
+import { Logo } from "./Logo";
 import { MarginKey, MarginRule, NowSummary, TurnNote } from "./Margin";
 import { OpenAIKeyField } from "./OpenAIKeyField";
 import { type CompanionChatState, useCompanionChat } from "./useCompanionChat";
@@ -33,14 +36,19 @@ const smooth = (): ScrollBehavior =>
 
 const levelAfter = (e: Exchange | undefined): RiskLevel | null => (e?.reply && dataPart(e.reply, "risk")?.level) || null;
 
-/** /demo: the conversation, with FirstRead's notes in its margin, and the demo controls. */
+/**
+ * /demo, on one screen: the controls and the notice on glass at the top, then the conversation,
+ * which is the only thing that scrolls, with the message box pinned under it.
+ */
 export function DemoClient() {
   const chat = useCompanionChat();
   const [keyOpen, setKeyOpen] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
-  const top = useRef<HTMLDivElement>(null);
+  // When each message was sent, for the live strip. Written the first time a message is rendered,
+  // which is the moment it's sent; idempotent, so a repeated render doesn't move it.
+  const sentAt = useRef(new Map<string, number>());
   const rows = exchanges(chat.messages);
-  const started = rows.length > 0;
+  for (const e of rows) if (!sentAt.current.has(e.user.id)) sentAt.current.set(e.user.id, Date.now());
   const latestRisk = [...chat.messages]
     .reverse()
     .map((m) => dataPart(m, "risk"))
@@ -52,17 +60,12 @@ export function DemoClient() {
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: smooth() });
   }, [chat.messages, chat.busy]);
 
-  // When a conversation starts, bring the controls and the whole conversation into view.
-  useEffect(() => {
-    if (!started) return;
-    top.current?.scrollIntoView({ block: "start", behavior: smooth() });
-  }, [started]);
-
   return (
-    <div ref={top} className="scroll-mt-4 space-y-4">
+    <>
       <Controls chat={chat} keyOpen={keyOpen} onToggleKey={() => setKeyOpen(!keyOpen)} />
+      <DemoNotice />
       {(keyOpen || (!chat.key && chat.error)) && (
-        <div className="rounded-xl border border-line bg-margin p-4">
+        <div className="glass shrink-0 rounded-xl p-4">
           <OpenAIKeyField
             value={chat.key}
             onSave={(k) => {
@@ -74,13 +77,13 @@ export function DemoClient() {
         </div>
       )}
 
-      <section aria-label="Conversation" className="margin-paper overflow-hidden rounded-xl border border-line bg-canvas">
+      <section aria-label="Conversation" className="glass flex min-h-80 flex-1 flex-col overflow-hidden rounded-2xl">
         {rows.length > 0 && (
-          <header className={`${ROW} gutter border-b border-line`}>
-            <div className="col-span-2 bg-margin p-5 lg:col-span-1 lg:col-start-3 lg:bg-transparent">
+          <header className={`${ROW} gutter`}>
+            <div className="col-span-2 px-4 pt-3 pb-2 lg:col-span-1 lg:col-start-3 lg:px-5 lg:py-4">
               <NowSummary risk={latestRisk} waiting />
             </div>
-            <p className="col-span-2 self-center px-5 pt-3 pb-4 text-sm text-muted lg:col-span-1 lg:col-start-1 lg:row-start-1 lg:max-w-[60ch] lg:px-6 lg:py-5">
+            <p className="col-span-2 hidden self-center px-4 pb-3 text-sm text-ink/75 sm:block lg:col-span-1 lg:col-start-1 lg:row-start-1 lg:max-w-[60ch] lg:px-6 lg:py-4">
               {chat.jevDown
                 ? "Jev is switched off for this conversation. Every FirstRead check fails, so watch it fail closed: no reply goes out unchecked."
                 : chat.playing
@@ -90,7 +93,11 @@ export function DemoClient() {
           </header>
         )}
 
-        <div ref={scroller} className="gutter-scroll h-[min(44rem,72dvh)] overflow-y-auto lg:h-[max(24rem,calc(100dvh-19rem))]" aria-live="polite">
+        <div
+          ref={scroller}
+          className="margin-paper gutter-scroll min-h-0 flex-1 overflow-y-auto border-y border-ink/8 bg-canvas"
+          aria-live="polite"
+        >
           {rows.length === 0 ? (
             <EmptyState chat={chat} onAddKey={() => setKeyOpen(true)} />
           ) : (
@@ -106,7 +113,12 @@ export function DemoClient() {
                     <MarginRule before={i === 0 ? null : levelAfter(rows[i - 1])} after={pending ? null : levelAfter(e)} />
                   </div>
                   <div className="col-start-2 row-start-2 mr-4 mb-4 rounded-lg border border-line bg-margin p-4 lg:col-start-3 lg:row-start-1 lg:m-0 lg:rounded-none lg:border-0 lg:bg-transparent lg:px-5 lg:py-4">
-                    <TurnNote reply={e.reply} before={i === 0 ? null : levelAfter(rows[i - 1])} />
+                    <TurnNote
+                      reply={e.reply}
+                      before={i === 0 ? null : levelAfter(rows[i - 1])}
+                      startedAt={sentAt.current.get(e.user.id)}
+                      live={pending && chat.busy}
+                    />
                   </div>
                 </article>
               );
@@ -115,22 +127,28 @@ export function DemoClient() {
           {chat.error && <p className="px-6 py-4 text-sm text-danger lg:max-w-[calc(100%-24.5rem)]">{errorMessage(chat.error)}</p>}
         </div>
 
-        <footer className={`${ROW} gutter border-t border-line`}>
-          <div className="col-span-2 p-3 lg:col-span-1 lg:px-6 lg:py-4">
+        <footer className={`${ROW} gutter`}>
+          <div className="col-span-2 p-3 lg:col-span-1 lg:px-6 lg:py-3">
             <Composer chat={chat} />
           </div>
-          <div className="hidden lg:col-start-3 lg:block lg:px-5 lg:py-4">
-            <MarginKey thresholds={latestRisk?.thresholds} />
+          <div className="hidden lg:col-start-3 lg:block lg:px-5 lg:py-3">
+            <MarginKey />
           </div>
         </footer>
       </section>
-    </div>
+    </>
   );
 }
 
 function Controls({ chat, keyOpen, onToggleKey }: { chat: CompanionChatState; keyOpen: boolean; onToggleKey: () => void }) {
   return (
-    <div className="flex flex-wrap items-center gap-2 text-sm">
+    <div className="glass flex shrink-0 flex-wrap items-center gap-2 rounded-2xl px-3 py-2 text-sm">
+      <h1 className="mr-2">
+        <Link href="/" className="block rounded-md">
+          <Logo />
+          <span className="sr-only">: the demo</span>
+        </Link>
+      </h1>
       <label className="sr-only" htmlFor="scenario">
         Play a scenario
       </label>
@@ -157,7 +175,8 @@ function Controls({ chat, keyOpen, onToggleKey }: { chat: CompanionChatState; ke
         </button>
       )}
       <button type="button" onClick={chat.newConversation} className="flex h-9 items-center gap-2 rounded-md border border-line bg-canvas px-3 hover:bg-raised">
-        New conversation
+        <span className="sm:hidden">New</span>
+        <span className="hidden sm:inline">New conversation</span>
       </button>
 
       <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
@@ -173,7 +192,10 @@ function Controls({ chat, keyOpen, onToggleKey }: { chat: CompanionChatState; ke
               Your key <span className="font-mono text-muted">…{chat.key.slice(-4)}</span>
             </>
           ) : (
-            "Add your OpenAI key"
+            <>
+              <span className="sm:hidden">Add key</span>
+              <span className="hidden sm:inline">Add your OpenAI key</span>
+            </>
           )}
         </button>
         <button
@@ -181,7 +203,7 @@ function Controls({ chat, keyOpen, onToggleKey }: { chat: CompanionChatState; ke
           role="switch"
           aria-checked={chat.jevDown}
           onClick={() => chat.setJevDown(!chat.jevDown)}
-          className="flex h-9 items-center gap-2 rounded-md border border-line bg-canvas px-3 hover:bg-raised gap-2.5 pl-2.5"
+          className="flex h-9 items-center gap-2.5 rounded-md border border-line bg-canvas pr-3 pl-2.5 hover:bg-raised"
         >
           <span
             aria-hidden="true"
@@ -191,8 +213,13 @@ function Controls({ chat, keyOpen, onToggleKey }: { chat: CompanionChatState; ke
               className={`absolute top-0.5 left-0.5 size-4 rounded-full bg-canvas shadow-sm transition-transform motion-reduce:transition-none ${chat.jevDown ? "translate-x-4" : ""}`}
             />
           </span>
-          Simulate Jev being down
+          <span className="sm:hidden">Jev down</span>
+          <span className="hidden sm:inline">Simulate Jev being down</span>
         </button>
+        <Link href="/deck/1" className="px-2 text-accent hover:underline">
+          <span className="sm:hidden">Talk</span>
+          <span className="hidden sm:inline">The talk</span>
+        </Link>
       </div>
     </div>
   );
