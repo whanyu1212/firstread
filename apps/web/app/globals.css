@@ -28,6 +28,9 @@
   --color-level-watch: #fab219;
   --color-level-elevated: #ec835a;
   --color-level-crisis: #d03b3b;
+  /* Chart series (dataviz reference categorical slots 1 and 2, light; validated as a pair). */
+  --color-series-1: #2a78d6;
+  --color-series-2: #eb6834;
 
   /* The demo's one motion: a turn's stretch of the margin rule draws down once FirstRead has read it. */
   --animate-rule-draw: rule-draw 700ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
@@ -56,24 +59,24 @@
   }
 }
 
-/* Slide typography for MDX content. */
-.slide > h1 {
-  @apply mb-8 text-5xl leading-[1.05] font-semibold tracking-[-0.03em] sm:text-7xl;
+/* Slide typography for MDX content: the slide itself, or its text column beside a graphic. */
+:is(.slide, .slide-text) > h1 {
+  @apply mb-8 text-5xl leading-[1.05] font-semibold tracking-[-0.03em] sm:text-6xl;
 }
-.slide > p {
+:is(.slide, .slide-text) > p {
   @apply mb-4 max-w-[34em] text-xl leading-relaxed text-muted sm:text-2xl;
 }
-.slide > ul {
+:is(.slide, .slide-text) > :is(ul, .points) {
   @apply max-w-[34em] space-y-4 text-xl leading-snug sm:text-2xl;
 }
-.slide > ul > li {
+:is(.slide, .slide-text) > :is(ul, .points) > li {
   @apply ml-6 list-disc marker:text-accent;
 }
-.slide > :is(p, ul) strong {
+:is(.slide, .slide-text) > :is(p, ul, .points) strong {
   @apply font-semibold text-ink;
 }
 /* Where the slide sits in the talk. */
-.slide > .act {
+:is(.slide, .slide-text) > .act {
   @apply mb-4 font-mono text-sm text-muted sm:text-base;
 }
 
@@ -92,4 +95,11 @@
 }
 .gutter-scroll {
   scrollbar-gutter: stable;
+}
+
+/* The deck on a projector or a large screen: everything scales up together. */
+@media (min-width: 100rem) {
+  html:has(.deck) {
+    font-size: 118.75%;
+  }
 }

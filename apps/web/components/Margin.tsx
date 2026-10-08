@@ -163,8 +163,19 @@ function timingLine(audit: ChatData["audit"], timing: ChatData["timing"]): strin
   return `${read}Reply shown after ${secs(timing.totalMs)}.`;
 }
 
-/** The note beside one turn. While the turn is pending, it shows how far FirstRead has got. */
-export function TurnNote({ reply, before }: { reply: ChatMessage | undefined; before: RiskLevel | null }) {
+/**
+ * The note beside one turn. While the turn is pending, it shows how far FirstRead has got.
+ * `compact` keeps the headline, the reply and the timing: for the deck, where the bars won't read.
+ */
+export function TurnNote({
+  reply,
+  before,
+  compact = false,
+}: {
+  reply: ChatMessage | undefined;
+  before: RiskLevel | null;
+  compact?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const check = reply && dataPart(reply, "check");
   const audit = reply && dataPart(reply, "audit");
@@ -186,6 +197,17 @@ export function TurnNote({ reply, before }: { reply: ChatMessage | undefined; be
   }
 
   const { title, reason } = headline(risk, audit, before);
+  if (compact) {
+    return (
+      <div className="space-y-1">
+        <p className="font-semibold tracking-tight">{title}</p>
+        {reason && <p className="text-muted">{reason}</p>}
+        <p>
+          {replyLine(audit)} <span className="font-mono text-sm text-muted">{secs(timing.totalMs)}</span>
+        </p>
+      </div>
+    );
+  }
   const handoff = reply && dataPart(reply, "handoff");
   const exercise = reply && dataPart(reply, "exercise");
   const user = audit.userSignals;
