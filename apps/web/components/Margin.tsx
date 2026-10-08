@@ -361,7 +361,9 @@ export function JevStrip({
     jev = read !== null ? [{ from: 0, to: read, failed: readFailed }] : [];
   } else {
     const elapsed = startedAt ? Math.max(0, (now - startedAt) / 1000) : 0;
-    axis = Math.max(elapsed, read ?? 0, 1);
+    // Headroom past the elapsed time, so the companion's lane visibly advances and Jev's read stays
+    // put; most turns take 3–6s. The scale snaps to the real total once the turn is done.
+    axis = Math.max(6, elapsed + 1);
     companion = { from: 0, to: Math.max(elapsed, read ?? 0), running: true };
     jev = [read !== null ? { from: 0, to: read, failed: readFailed } : { from: 0, to: elapsed, running: true }];
   }
