@@ -1,8 +1,9 @@
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
+import { DEFAULT_RISK_CONFIG } from "firstread";
 import { after } from "next/server";
-import { type ChatMessage, MAX_MESSAGE_LENGTH, OPENAI_KEY_HEADER } from "@/lib/chat";
+import { type ChatMessage, JEV_DOWN_HEADER, MAX_MESSAGE_LENGTH, OPENAI_KEY_HEADER } from "@/lib/chat";
 import { COMPANION_MODEL, draftReply } from "@/lib/companion";
-import { guard } from "@/lib/firstread";
+import { guard, guardWithJevDown } from "@/lib/firstread";
 import { extractNotes } from "@/lib/notes";
 import { MAX_NOTES, memorySessionStore } from "@/lib/session";
 import { DraftTimeoutError, type TurnResult, runTurn } from "@/lib/turn";
@@ -38,6 +39,7 @@ export async function POST(req: Request) {
   if (!apiKey) return Response.json({ error: "Add your OpenAI API key to chat live." }, { status: 401 });
 
   // The client sends only the new message: the history the checks rely on lives on the server.
+  const jevDown = req.headers.get(JEV_DOWN_HEADER) === "1";
   const { id, message }: { id?: unknown; message?: ChatMessage } = await req.json();
   const text =
     message?.role === "user"
@@ -77,7 +79,7 @@ export async function POST(req: Request) {
           text,
           session,
           {
-            guard,
+            guard: jevDown ? guardWithJevDown : guard,
             draft: ({ history, text, notes, signal }) => draftReply({ apiKey, history, text, notes, signal }),
           },
           (check, ms) =>
@@ -122,6 +124,7 @@ export async function POST(req: Request) {
             history: risk.history,
             changes: risk.changes,
             ledger: risk.ledger.map(({ text, level }) => ({ text, level })),
+            thresholds: { watch: DEFAULT_RISK_CONFIG.scoreWatch, elevated: DEFAULT_RISK_CONFIG.scoreElevated },
           },
         });
 

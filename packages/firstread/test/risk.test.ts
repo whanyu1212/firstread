@@ -64,7 +64,7 @@ describe("evidence-backed CRISIS (part 2)", () => {
     // serious-gaming: "launch my pc out the window"
     const s = run([{ plan: 0.5, means: 0.7, imminent: 0.51, ideation: 0.09, self_harm: 0.22 }]);
     expect(s.level).toBe("ELEVATED");
-    expect(s.changes.at(-1)?.reason).toMatch(/without self-harm context/);
+    expect(s.changes.at(-1)?.reason).toMatch(/no self-harm context/);
   });
 
   it("escalates the same reading with self-harm context", () => {

@@ -1,16 +1,16 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
 import { type FormEvent, useEffect, useRef, useState } from "react";
-import { type ChatMessage, OPENAI_KEY_HEADER } from "@/lib/chat";
-import { OpenAIKeyField, useOpenAIKey } from "./OpenAIKeyField";
+import type { ChatData, ChatMessage } from "@/lib/chat";
+import { LEVEL_LABEL } from "./levels";
+import { OpenAIKeyField } from "./OpenAIKeyField";
+import { type CompanionChatState, useCompanionChat } from "./useCompanionChat";
 
 /**
  * The route's errors are short and written for the user: a JSON body before the stream starts (no
  * key), or plain text from the stream (key rejected). Anything else gets a generic message.
  */
-function errorMessage(error: Error): string {
+export function errorMessage(error: Error): string {
   try {
     const body = JSON.parse(error.message) as { error?: unknown };
     if (typeof body.error === "string") return body.error;
@@ -22,125 +22,154 @@ function errorMessage(error: Error): string {
   return "Something went wrong. Please try again.";
 }
 
-export function CompanionChat({ compact = false }: { compact?: boolean }) {
-  const { key, setKey, forget } = useOpenAIKey();
-  // The transport lives for the component's lifetime, so it reads the key through a ref.
-  const keyRef = useRef(key);
-  keyRef.current = key;
-  const [transport] = useState(
-    () =>
-      new DefaultChatTransport<ChatMessage>({
-        api: "/api/chat",
-        headers: (): Record<string, string> => (keyRef.current ? { [OPENAI_KEY_HEADER]: keyRef.current } : {}),
-        // Only the new message: the history FirstRead and the companion use is kept on the server.
-        prepareSendMessagesRequest: ({ id, messages }) => ({ body: { id, message: messages.at(-1) } }),
-      }),
-  );
-  const { messages, sendMessage, status, error } = useChat<ChatMessage>({ transport });
-  const [input, setInput] = useState("");
-  const busy = status === "submitted" || status === "streaming";
-  const scroller = useRef<HTMLDivElement>(null);
+/** A data part of one message, typed by name. */
+export function dataPart<K extends keyof ChatData>(m: ChatMessage, name: K): ChatData[K] | undefined {
+  const part = m.parts.find((p) => p.type === `data-${name}`) as { data: ChatData[K] } | undefined;
+  return part?.data;
+}
 
-  // Keep the latest turn in view as messages and the "replying" line come and go.
-  useEffect(() => {
-    const el = scroller.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [messages, status]);
+export const secs = (ms: number | null) => (ms === null ? "–" : `${(ms / 1000).toFixed(1)}s`);
+
+export const messageText = (m: ChatMessage) => m.parts.map((p) => (p.type === "text" ? p.text : "")).join("");
+
+export function UserBubble({ text }: { text: string }) {
+  return (
+    <div className="flex justify-end">
+      <p className="max-w-[85%] rounded-xl bg-user px-4 py-2.5 leading-normal whitespace-pre-line">
+        {text}
+      </p>
+    </div>
+  );
+}
+
+/** The companion's side of a turn: its reply (or a "writing" line), the exercise it offered, any error. */
+export function CompanionReply({ message, pending }: { message: ChatMessage | undefined; pending: boolean }) {
+  const text = message ? messageText(message) : "";
+  const exercise = message && dataPart(message, "exercise");
+  const companionError = message && dataPart(message, "companionError");
+  return (
+    <div className="space-y-2">
+      {text ? (
+        <p className="max-w-[85%] leading-relaxed whitespace-pre-line">
+          {text}
+        </p>
+      ) : (
+        pending && (
+          <p className="text-sm text-muted">
+            <span className="motion-safe:animate-node-wait">Waiting for a reply FirstRead has checked</span>
+          </p>
+        )
+      )}
+      {exercise && <ExerciseCard exercise={exercise} />}
+      {companionError && <p className="text-sm text-danger">{companionError.message}</p>}
+    </div>
+  );
+}
+
+function ExerciseCard({ exercise }: { exercise: ChatData["exercise"] }) {
+  return (
+    <section
+      aria-label={`Exercise: ${exercise.name}`}
+      className="max-w-[85%] rounded-lg border border-line bg-margin px-4 py-3"
+    >
+      <h3 className="font-semibold tracking-tight">{exercise.name}</h3>
+      <ol className="mt-2 space-y-1.5 text-sm text-muted">
+        {exercise.steps.map((step, i) => (
+          <li key={step} className="grid grid-cols-[1.25rem_1fr]">
+            <span className="font-mono text-ink">{i + 1}</span>
+            <span>{step}</span>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+/** The message box. Locked while a scenario plays, so the script can't be interleaved. */
+export function Composer({ chat }: { chat: CompanionChatState }) {
+  const { sendMessage, busy, playing } = chat;
+  const [input, setInput] = useState("");
 
   function submit(e: FormEvent) {
     e.preventDefault();
     const text = input.trim();
-    if (!text || busy) return;
+    if (!text || busy || playing) return;
     sendMessage({ text });
     setInput("");
   }
 
   return (
-    <div className={`flex flex-col rounded-2xl border border-line bg-panel ${compact ? "h-[26rem]" : "h-[36rem]"}`}>
-      <OpenAIKeyField value={key} onSave={setKey} onForget={forget} />
-      <div ref={scroller} className="flex-1 space-y-3 overflow-y-auto p-4">
-        {messages.length === 0 && <p className="text-sm text-muted">Say hello to the companion.</p>}
-        {messages.map((m) => {
-          const text = m.parts.map((p) => (p.type === "text" ? p.text : "")).join("");
-          const data = <T extends ChatMessage["parts"][number]["type"]>(type: T) =>
-            m.parts.find((p) => p.type === type) as Extract<ChatMessage["parts"][number], { type: T }> | undefined;
-          const check = data("data-check")?.data;
-          const audit = data("data-audit")?.data;
-          const exercise = data("data-exercise")?.data;
-          const handoff = data("data-handoff")?.data;
-          const companionError = data("data-companionError")?.data;
-          const timing = data("data-timing")?.data;
-          const secs = (ms: number | null) => (ms === null ? "–" : `${(ms / 1000).toFixed(1)}s`);
-          if (m.role === "user") {
-            return (
-              <div key={m.id} className="text-right">
-                <div className="inline-block max-w-[85%] rounded-2xl bg-accent px-4 py-2 text-left text-on-accent">
-                  {text}
-                </div>
-              </div>
-            );
-          }
+    <form onSubmit={submit} className="flex gap-2">
+      <input
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        placeholder={playing ? `Playing “${playing.title}”` : "Write a message"}
+        aria-label="Message"
+        disabled={!!playing}
+        className="h-10 min-w-0 flex-1 rounded-md border border-line bg-margin px-3 outline-none placeholder:text-muted focus-visible:border-muted focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-none disabled:opacity-60"
+      />
+      <button
+        type="submit"
+        disabled={busy || !!playing || !input.trim()}
+        className="h-10 rounded-md bg-ink px-4 font-medium text-canvas hover:bg-ink/90 disabled:opacity-40"
+      >
+        Send
+      </button>
+    </form>
+  );
+}
+
+/** A standalone chat (the deck's live slide): its own state, with a line under each reply. */
+export function CompanionChat({ compact = false }: { compact?: boolean }) {
+  const chat = useCompanionChat();
+  return <ChatView chat={chat} compact={compact} />;
+}
+
+/** The chat on its own, for where no margin of notes fits: one line per reply says what FirstRead did. */
+function ChatView({ chat, compact = false }: { chat: CompanionChatState; compact?: boolean }) {
+  const { messages, busy, error, key, setKey, forgetKey } = chat;
+  const scroller = useRef<HTMLDivElement>(null);
+
+  // Keep the latest turn in view as messages come in.
+  useEffect(() => {
+    const el = scroller.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages, busy]);
+
+  return (
+    <div className={`flex flex-col rounded-xl border border-line bg-canvas ${compact ? "h-[26rem]" : "h-[min(40rem,70dvh)]"}`}>
+      <div className="border-b border-line p-4">
+        <OpenAIKeyField value={key} onSave={setKey} onForget={forgetKey} />
+      </div>
+      <div ref={scroller} className="flex-1 space-y-4 overflow-y-auto p-4" aria-live="polite">
+        {messages.length === 0 && <p className="text-muted">Say hello to the companion.</p>}
+        {messages.map((m, i) => {
+          if (m.role === "user") return <UserBubble key={m.id} text={messageText(m)} />;
+          const audit = dataPart(m, "audit");
+          const timing = dataPart(m, "timing");
           return (
             <div key={m.id}>
-              {text ? (
-                <div className="inline-block max-w-[85%] whitespace-pre-line rounded-2xl bg-raised px-4 py-2">{text}</div>
-              ) : (
-                <p className="text-sm text-muted">
-                  {check
-                    ? check.ok
-                      ? `FirstRead read your message (${check.level}, ${secs(check.ms)}). Companion is replying…`
-                      : "FirstRead couldn't check your message in time. Holding the reply…"
-                    : "FirstRead is reading your message…"}
-                </p>
-              )}
-              {exercise && (
-                <div className="mt-2 max-w-[85%] rounded-2xl border border-line p-3 text-sm">
-                  <p className="mb-1 font-medium">{exercise.name}</p>
-                  <ol className="ml-5 list-decimal space-y-1 text-muted">
-                    {exercise.steps.map((step) => (
-                      <li key={step}>{step}</li>
-                    ))}
-                  </ol>
-                </div>
-              )}
-              {companionError && <p className="mt-1 text-xs text-danger">{companionError.message}</p>}
-              {handoff && (
-                <p className="mt-1 text-xs text-muted">
-                  Request for a person recorded. In this demo, no one is on call.
-                </p>
-              )}
+              <CompanionReply message={m} pending={busy && i === messages.length - 1} />
               {audit && timing && (
-                <p className="mt-1 text-xs text-muted">
-                  FirstRead: {audit.action} at {audit.level}
-                  {audit.shortCircuit ? ` (${audit.shortCircuit === "already-crisis" ? "already at CRISIS" : "short circuit"})` : ""}
-                  {audit.failures.length ? ` · failed closed (${audit.failures.map((f) => f.check).join(", ")} check)` : ""} ·
-                  check {secs(timing.checkMs)} · companion {secs(timing.draftMs)} · total {secs(timing.totalMs)}
+                <p className="mt-1.5 font-mono text-xs text-muted">
+                  {CAPTION[audit.action]} at {LEVEL_LABEL[audit.level]}, in {secs(timing.totalMs)}
                 </p>
               )}
             </div>
           );
         })}
-        {busy && messages.at(-1)?.role === "user" && (
-          <p className="text-sm text-muted">FirstRead is reading your message…</p>
-        )}
+        {busy && messages.at(-1)?.role === "user" && <CompanionReply message={undefined} pending />}
         {error && <p className="text-sm text-danger">{errorMessage(error)}</p>}
       </div>
-      <form onSubmit={submit} className="flex gap-2 border-t border-line p-3">
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Type a message"
-          aria-label="Message"
-          className="flex-1 rounded-xl border border-line bg-raised px-3 py-2 outline-none focus:border-accent"
-        />
-        <button
-          type="submit"
-          disabled={busy || !input.trim()}
-          className="rounded-xl bg-accent px-4 py-2 font-medium text-on-accent disabled:opacity-40"
-        >
-          Send
-        </button>
-      </form>
+      <div className="p-3">
+        <Composer chat={chat} />
+      </div>
     </div>
   );
 }
+
+const CAPTION = {
+  send: "FirstRead sent the reply as written",
+  replace: "FirstRead replaced the reply with a safe one",
+  escalate: "FirstRead sent the crisis reply",
+} as const;

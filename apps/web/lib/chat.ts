@@ -7,6 +7,9 @@ import type { Action, CheckFailure, ReplySignals, RiskChange, RiskLevel, UserSig
  */
 export const OPENAI_KEY_HEADER = "x-openai-key";
 
+/** Demo switch: "1" makes every Jev check fail for this request, to show fail-closed. */
+export const JEV_DOWN_HEADER = "x-demo-jev-down";
+
 /** Longest message the route accepts. */
 export const MAX_MESSAGE_LENGTH = 2000;
 
@@ -43,6 +46,8 @@ export type ChatData = {
     changes: RiskChange[];
     /** Earlier messages FirstRead is still carrying forward. */
     ledger: { text: string; level: RiskLevel }[];
+    /** Where the score raises the level on its own. */
+    thresholds: { watch: number; elevated: number };
   };
 };
 

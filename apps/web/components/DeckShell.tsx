@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect } from "react";
+import { Logo } from "./Logo";
 
 const NEXT_KEYS = new Set(["ArrowRight", "ArrowDown", "PageDown", " "]);
 const PREV_KEYS = new Set(["ArrowLeft", "ArrowUp", "PageUp"]);
@@ -63,17 +64,20 @@ export function DeckShell({
   }, [index, total, router]);
 
   return (
-    <main className="flex min-h-dvh flex-col bg-canvas text-ink">
+    <main className="flex min-h-dvh flex-col bg-page text-ink">
       <section className="slide mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center px-6 py-12 sm:px-12">
         {children}
       </section>
       <footer className="flex items-center justify-between gap-4 px-6 py-4 text-sm text-muted sm:px-12">
-        <span className="truncate">FirstRead · {title}</span>
+        <span className="flex min-w-0 items-center gap-3">
+          <Logo size="sm" />
+          <span className="truncate">{title}</span>
+        </span>
         <nav className="flex shrink-0 items-center gap-3" aria-label="Slides">
           <StepLink to={index - 1} total={total} label="Previous slide">
             ←
           </StepLink>
-          <span className="whitespace-nowrap tabular-nums">
+          <span className="font-mono whitespace-nowrap">
             {index} / {total}
           </span>
           <StepLink to={index + 1} total={total} label="Next slide">
@@ -84,7 +88,7 @@ export function DeckShell({
           </Link>
         </nav>
       </footer>
-      <div className="h-1 bg-line">
+      <div className="h-0.5 bg-line">
         <div className="h-full bg-accent transition-[width]" style={{ width: `${(100 * index) / total}%` }} />
       </div>
     </main>
