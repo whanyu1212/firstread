@@ -42,7 +42,11 @@ const runs = latest().map(({ client, file }) => {
   }
   return { client, file, rows };
 });
-if (!runs.some((r) => r.client === "jev")) throw new Error(`no bhh-${SPLIT}-jev results; run \`pnpm eval:bhh\` first`);
+// The deck's charts read every model, so never write a file with one missing.
+const missing = Object.keys(MODELS).filter((client) => !runs.some((r) => r.client === client));
+if (missing.length) {
+  throw new Error(`no bhh-${SPLIT} results for ${missing.join(", ")}; run them before \`pnpm export:deck\``);
+}
 
 // Paired: only cases every run answered, as in compare-bhh.ts.
 const first = runs[0]!;

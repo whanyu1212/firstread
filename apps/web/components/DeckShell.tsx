@@ -63,15 +63,20 @@ export function DeckShell({
       if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
       if (NEXT_KEYS.has(e.key)) forward();
       else if (PREV_KEYS.has(e.key)) back();
-      else if (e.key === "Home") router.push("/deck/1");
-      else if (e.key === "End") router.push(`/deck/${total}${LAST_STEP}`);
-      else return;
+      // Already on the first or last slide, navigating wouldn't remount it, so set the step here.
+      else if (e.key === "Home") {
+        if (index === 1) setStep(0);
+        else router.push("/deck/1");
+      } else if (e.key === "End") {
+        if (index === total) setStep(steps);
+        else router.push(`/deck/${total}${LAST_STEP}`);
+      } else return;
       e.preventDefault();
     };
     window.addEventListener("keydown", onKey);
     if (index < total) router.prefetch(`/deck/${index + 1}`);
     return () => window.removeEventListener("keydown", onKey);
-  }, [forward, back, index, total, router]);
+  }, [forward, back, index, total, steps, router, setStep]);
 
   const atStart = index === 1 && step === 0;
   const atEnd = index === total && step === steps;
