@@ -103,11 +103,11 @@
 }
 
 /* The demo's margin: from the middle of the rule rightwards, FirstRead's notes sit on their own
-   paper (22rem notes plus half the 2.5rem rule column). */
+   paper (22rem notes plus half the 2.5rem rule column). On the scrolling conversation only: the
+   header and footer around it are glass. */
 @media (min-width: 64rem) {
-  .margin-paper :is(header, footer, article),
-  .margin-paper .gutter-scroll {
-    background: linear-gradient(90deg, transparent calc(100% - 23.25rem), var(--color-margin) 0);
+  .margin-paper {
+    background: linear-gradient(90deg, var(--color-canvas) calc(100% - 23.25rem), var(--color-margin) 0);
   }
 }
 /* Header, rows and footer line up even where the scrollbar takes space. */

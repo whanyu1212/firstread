@@ -54,7 +54,11 @@ export interface TurnResult {
   shortCircuit: "already-crisis" | "crisis" | null;
   /** The companion failed (not stopped by us); the turn went out through FirstRead's fallback. */
   draftError: unknown;
-  timings: { checkMs: number | null; draftMs: number | null; totalMs: number };
+  /**
+   * draftMs is when the companion's call ended, whether or not it produced a draft; replyCheckMs
+   * is set only when a draft was checked.
+   */
+  timings: { checkMs: number | null; draftMs: number | null; replyCheckMs: number | null; totalMs: number };
 }
 
 export async function runTurn(
@@ -67,7 +71,7 @@ export async function runTurn(
   const started = now();
   const conv = toConversation(session.conv);
   const levelBefore = conv.level;
-  const timings: TurnResult["timings"] = { checkMs: null, draftMs: null, totalMs: 0 };
+  const timings: TurnResult["timings"] = { checkMs: null, draftMs: null, replyCheckMs: null, totalMs: 0 };
 
   let audit: TurnAudit;
   let draft: Draft | null = null;
@@ -125,7 +129,9 @@ export async function runTurn(
       if (result.ok) {
         draft = result.draft;
         // If the user check says CRISIS after this, finish() escalates anyway.
+        const checking = now();
         audit = await pending.finish(draft.reply);
+        timings.replyCheckMs = now() - checking;
       } else {
         // Stopped by us (CRISIS arrived mid-draft, or too slow) or failed: either way, nothing
         // unchecked goes out.
