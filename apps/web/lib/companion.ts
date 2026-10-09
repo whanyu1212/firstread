@@ -15,6 +15,9 @@ import { supportLinesSkill } from "./skills/support-lines";
  */
 // gpt-6-sol at low reasons and answers in ~3.9s (p50) through the whole pipeline; gpt-6.1-sol at
 // low made the same safety decisions but took ~8s (Oct 7). Both are env-configurable.
+// Flash models through the gateway were no faster per whole turn (Oct 9, p50 vs sol's 3.5-4.1s):
+// gemini-3.8-flash at low thinking 3.1s (default thinking hit 47-52s); deepseek-v4.1-flash 3.5s,
+// help lines verbatim 19/20; glm-5.3-flash 3.6s but failed the schema on 1 draft in 8.
 export const COMPANION_MODEL = process.env.COMPANION_MODEL ?? "gpt-6-sol";
 const REASONING_EFFORT = process.env.COMPANION_REASONING_EFFORT ?? "low";
 
