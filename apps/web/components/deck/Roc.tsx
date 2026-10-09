@@ -3,6 +3,7 @@
 import { motion } from "motion/react";
 import bhh from "@/slides/data/bhh.json";
 import { DURATION, useTransition } from "./motion";
+import { Stat } from "./Stat";
 import { useStep } from "./steps";
 
 /**
@@ -50,6 +51,12 @@ export function Roc({ at }: { at: number }) {
 
   return (
     <figure>
+      <Stat
+        value={runs[0]!.run.auc.toFixed(3)}
+        label={`${runs[0]!.run.name}'s AUC`}
+        color={runs[0]!.color}
+        versus={`${runs[1]!.run.name}: ${runs[1]!.run.auc.toFixed(3)}, on the same messages.`}
+      />
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img"
         aria-label={`ROC curves on the BHH test split. ${runs.map((r) => `${r.run.name}: AUC ${r.run.auc}, recall ${pct(recallAt(r.run.roc, MARK_FAR))} at a ${pct(MARK_FAR)} false-alarm rate`).join(". ")}.`}>
         <defs>
@@ -110,7 +117,8 @@ export function Roc({ at }: { at: number }) {
           return (
             <motion.g key={r.id} initial={false} animate={{ opacity: play ? 1 : 0 }} transition={play ? t(DURATION.base, DURATION.slow + i * 0.2) : t(0)}>
               <circle cx={x(MARK_FAR)} cy={y(recall)} r={6} fill={r.color} stroke="var(--color-canvas)" strokeWidth={2} />
-              <text x={x(MARK_FAR) + 12} y={y(recall) + (i === 0 ? -10 : 20)} className="fill-ink text-[15px] font-semibold">
+              {/* Jev's label sits up and to the left, clear of its curve, which runs on to the right. */}
+              <text x={x(MARK_FAR) + (i === 0 ? -12 : 12)} y={y(recall) + (i === 0 ? -10 : 20)} textAnchor={i === 0 ? "end" : "start"} className="fill-ink text-[15px] font-semibold">
                 {r.run.name} {pct(recall)}
               </text>
               {/* Direct label at the right end of each curve, with its AUC. */}

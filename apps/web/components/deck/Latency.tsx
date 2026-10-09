@@ -3,6 +3,7 @@
 import { motion } from "motion/react";
 import bhh from "@/slides/data/bhh.json";
 import { DURATION, useTransition } from "./motion";
+import { Stat } from "./Stat";
 import { useStep } from "./steps";
 
 /**
@@ -27,6 +28,12 @@ export function Latency({ at: from }: { at: number }) {
 
   return (
     <figure aria-label={`Time per check: ${runs.map((r) => `${r.run.name} median ${(r.run.latency.p50 / 1000).toFixed(2)}s`).join(", ")}.`}>
+      <Stat
+        value={`${(runs[0]!.run.latency.p50 / 1000).toFixed(2)}s`}
+        label={`${runs[0]!.run.name}'s median check`}
+        color={runs[0]!.color}
+        versus={`${runs[1]!.run.name}: ${(runs[1]!.run.latency.p50 / 1000).toFixed(2)}s, ${(runs[1]!.run.latency.p50 / runs[0]!.run.latency.p50).toFixed(1)}× as long.`}
+      />
       <div className="space-y-4">
         {runs.map((r, i) => (
           <div key={r.id}>

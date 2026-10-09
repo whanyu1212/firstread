@@ -6,11 +6,11 @@ import { TurnTimeline } from "@/components/deck/TurnTimeline";
 <Split
   visual={
     <Glass>
-      <div className="space-y-6 divide-y divide-ink/8 [&>*:not(:first-child)]:pt-6">
-        <Build at={1}>
+      <div className="grid [&>*]:col-start-1 [&>*]:row-start-1">
+        <Build at={1} until={3} className="self-center">
           <TurnTimeline at={1} />
         </Build>
-        <Build at={3}>
+        <Build at={3} className="self-center">
           <Calibration at={3} />
         </Build>
       </div>
