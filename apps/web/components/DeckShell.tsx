@@ -85,7 +85,7 @@ export function DeckShell({
   return (
     <MotionConfig reducedMotion="user">
       <StepContext.Provider value={step}>
-        <main className="deck flex min-h-dvh flex-col bg-page text-ink">
+        <main className="deck flex min-h-dvh flex-col text-ink">
           <section className="slide mx-auto flex w-full max-w-7xl flex-1 flex-col justify-center px-6 py-12 sm:px-12">
             {children}
           </section>

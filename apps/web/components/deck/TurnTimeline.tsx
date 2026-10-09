@@ -38,7 +38,7 @@ export function TurnTimeline({ at: from }: { at: number }) {
             <p className={`mb-1.5 text-base ${b.firstread ? "text-ink" : "text-muted"}`}>{b.label}</p>
             <div className="relative h-4">
               <motion.span
-                className={`absolute inset-y-0 rounded ${b.firstread ? "bg-series-1" : "bg-line"}`}
+                className={`absolute inset-y-0 rounded ${b.firstread ? "bg-series-1" : "bg-ink/15"}`}
                 style={{ left: at(b.from) }}
                 initial={false}
                 animate={{ width: play ? at(b.to - b.from) : "0%" }}

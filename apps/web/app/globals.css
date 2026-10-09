@@ -62,8 +62,8 @@
   }
 }
 
-/* Frosted glass, for the landing page only: the deck and demo stay flat. It needs colour behind it
-   to read. With reduced transparency asked for, it's a plain white panel. */
+/* Frosted glass, over the glow on every page. It needs colour behind it to read. With reduced
+   transparency asked for, it's a plain white panel. */
 @utility glass {
   background: rgb(255 255 255 / 0.68);
   -webkit-backdrop-filter: blur(24px) saturate(160%);
@@ -85,8 +85,9 @@
 :is(.slide, .slide-text) > h1 {
   @apply mb-8 text-5xl leading-[1.05] font-semibold tracking-[-0.03em] sm:text-6xl;
 }
+/* Body text sits on the glow, so its grey is darker than text-muted to stay above 4.5:1. */
 :is(.slide, .slide-text) > p {
-  @apply mb-4 max-w-[34em] text-xl leading-relaxed text-muted sm:text-2xl;
+  @apply mb-4 max-w-[34em] text-xl leading-relaxed text-ink/75 sm:text-2xl;
 }
 :is(.slide, .slide-text) > :is(ul, .points) {
   @apply max-w-[34em] space-y-4 text-xl leading-snug sm:text-2xl;

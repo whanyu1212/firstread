@@ -1,17 +1,20 @@
 import { Calibration } from "@/components/deck/Calibration";
+import { Glass } from "@/components/deck/Glass";
 import { Build, Point, Points, Split } from "@/components/deck/steps";
 import { TurnTimeline } from "@/components/deck/TurnTimeline";
 
 <Split
   visual={
-    <div className="space-y-8">
-      <Build at={1}>
-        <TurnTimeline at={1} />
-      </Build>
-      <Build at={3}>
-        <Calibration at={3} />
-      </Build>
-    </div>
+    <Glass>
+      <div className="space-y-6 divide-y divide-ink/8 [&>*:not(:first-child)]:pt-6">
+        <Build at={1}>
+          <TurnTimeline at={1} />
+        </Build>
+        <Build at={3}>
+          <Calibration at={3} />
+        </Build>
+      </div>
+    </Glass>
   }
 >
 
