@@ -99,6 +99,34 @@
   @apply font-semibold text-ink;
 }
 
+/* A slide change: the title, then the text, then the figure settle in, while the glow drifts
+   (DeckGlow). Each slide mounts afresh, so this plays once per slide. The fade is on the glass
+   itself, never on a parent of it: a fading parent turns its backdrop blur off until it ends. */
+@media (prefers-reduced-motion: no-preference) {
+  :is(.slide-text, .slide-cover) > *,
+  .slide-visual > * {
+    animation: slide-in 700ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  :is(.slide-text, .slide-cover) > :nth-child(2) {
+    animation-delay: 90ms;
+  }
+  :is(.slide-text, .slide-cover) > :nth-child(3) {
+    animation-delay: 180ms;
+  }
+  :is(.slide-text, .slide-cover) > :nth-child(n + 4) {
+    animation-delay: 270ms;
+  }
+  .slide-visual > * {
+    animation-delay: 220ms;
+  }
+}
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
 /* The demo's margin: from the middle of the rule rightwards, FirstRead's notes sit on their own
    paper (22rem notes plus half the 2.5rem rule column). On the scrolling conversation only: the
    header and footer around it are glass. */

@@ -11,7 +11,7 @@ import { DURATION, useTransition } from "./motion";
 export function Cover() {
   const t = useTransition();
   return (
-    <div className="flex flex-col gap-10 sm:gap-14">
+    <div className="slide-cover flex flex-col gap-10 sm:gap-14">
       <Logo size="lg" />
       <div className="grid grid-cols-[3px_minmax(0,1fr)] gap-x-6 sm:gap-x-10">
         <span className="relative" aria-hidden="true">
