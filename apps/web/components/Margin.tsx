@@ -331,27 +331,30 @@ export function JevStrip({
   if (audit && timing) {
     const total = timing.totalMs / 1000;
     const draft = timing.draftMs !== null ? timing.draftMs / 1000 : null;
+    // Only a draft that was checked has a reply check: a failed or timed-out companion call still
+    // has a draftMs (when it ended), but nothing was checked.
+    const replyCheck = timing.replyCheckMs != null ? timing.replyCheckMs / 1000 : null;
     axis = total;
     if (audit.shortCircuit === "crisis") {
       const at = read ?? total;
       companion = { from: 0, to: at, stopped: true };
       jev = [{ from: 0, to: at }];
       sentence = `Jev read your message in ${s(at)} and found signs of crisis, so the companion was stopped and the crisis reply went out.`;
-    } else if (draft === null) {
-      companion = { from: 0, to: total, stopped: true };
+    } else if (draft === null || replyCheck === null) {
+      companion = { from: 0, to: draft ?? total, stopped: true };
       jev = read !== null ? [{ from: 0, to: read, failed: readFailed }] : [];
       sentence = `The companion didn't reply, so FirstRead sent its own reply after ${s(total)}.`;
     } else {
       companion = { from: 0, to: draft };
       jev = [
         ...(read !== null ? [{ from: 0, to: read, failed: readFailed }] : []),
-        { from: draft, to: total, failed: replyFailed },
+        { from: draft, to: draft + replyCheck, failed: replyFailed },
       ];
       sentence = readFailed
         ? `Jev didn't answer about your message in time, so the companion's reply was held back. Shown after ${s(total)}.`
         : replyFailed
           ? `Jev read your message in ${s(read ?? 0)} while the companion wrote, but didn't answer the reply check in time, so the reply was held back. Shown after ${s(total)}.`
-          : `Jev read your message in ${s(read ?? 0)} while the companion wrote for ${s(draft)}, then checked the reply in ${s(total - draft)}. Shown after ${s(total)}.`;
+          : `Jev read your message in ${s(read ?? 0)} while the companion wrote for ${s(draft)}, then checked the reply in ${s(replyCheck)}. Shown after ${s(total)}.`;
     }
   } else if (reduce) {
     // Nothing grows with reduced motion: the companion's lane is shown as still writing, and Jev's

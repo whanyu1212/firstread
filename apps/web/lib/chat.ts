@@ -32,7 +32,11 @@ export type ChatData = {
   handoff: { reason: string };
   /** The companion failed; the user got FirstRead's fallback reply instead. */
   companionError: { message: string };
-  timing: { model: string; checkMs: number | null; draftMs: number | null; totalMs: number };
+  /**
+   * draftMs: when the companion's call ended, draft or not. replyCheckMs: set only when a draft was
+   * checked (absent in recordings made before it existed).
+   */
+  timing: { model: string; checkMs: number | null; draftMs: number | null; replyCheckMs?: number | null; totalMs: number };
   /**
    * The conversation's risk state after this turn, for the risk panel (HY-19). A presenter or
    * reviewer view, never a score shown to the person chatting. `score` is risk evidence, a policy

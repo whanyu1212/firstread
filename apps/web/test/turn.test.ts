@@ -59,6 +59,8 @@ describe("runTurn", () => {
     expect(r.exercise?.id).toBe("box_breathing");
     expect(r.shortCircuit).toBeNull();
     expect(session.conv.turns).toHaveLength(2);
+    expect(r.timings.draftMs).not.toBeNull();
+    expect(r.timings.replyCheckMs).not.toBeNull();
   });
 
   it("stops the companion when the user check says CRISIS, and answers before it would have", async () => {
@@ -127,6 +129,9 @@ describe("runTurn", () => {
     jev.user = { ideation: 0.9 }; // ELEVATED: the fallback is the safe reply with the lines
     const r = await runTurn("i don't want to be here", session, deps);
     expect(r.draftError).toBeInstanceOf(Error);
+    // The call ended, but there was no draft to check: the demo mustn't show a reply check.
+    expect(r.timings.draftMs).not.toBeNull();
+    expect(r.timings.replyCheckMs).toBeNull();
     expect(r.audit.reply).toBe(DEMO_REPLIES.safe);
     expect(r.audit.reply).toContain("1767");
     expect(session.conv.risk.level).toBe("ELEVATED");
@@ -140,6 +145,7 @@ describe("runTurn", () => {
     expect(companion.seen.aborted).toBe(true);
     expect(r.draftError).toBeInstanceOf(DraftTimeoutError);
     expect(r.shortCircuit).toBeNull();
+    expect(r.timings.replyCheckMs).toBeNull();
     expect(r.audit.reply).toBe(DEMO_REPLIES.holding);
   });
 
