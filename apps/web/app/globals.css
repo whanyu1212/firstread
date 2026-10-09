@@ -98,10 +98,6 @@
 :is(.slide, .slide-text) > :is(p, ul, .points) strong {
   @apply font-semibold text-ink;
 }
-/* Where the slide sits in the talk. */
-:is(.slide, .slide-text) > .act {
-  @apply mb-4 font-mono text-sm text-muted sm:text-base;
-}
 
 /* The demo's margin: from the middle of the rule rightwards, FirstRead's notes sit on their own
    paper (22rem notes plus half the 2.5rem rule column). On the scrolling conversation only: the
