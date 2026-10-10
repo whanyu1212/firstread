@@ -1,9 +1,14 @@
 import { FirstReadTurn } from "@/components/deck/FirstReadTurn";
+import { Glass } from "@/components/deck/Glass";
 import { Point, Points, Split } from "@/components/deck/steps";
 
-<Split visual={<FirstReadTurn />}>
-
-<p className="act">Act 1, the pain point</p>
+<Split
+  visual={
+    <Glass inset>
+      <FirstReadTurn />
+    </Glass>
+  }
+>
 
 # Every turn needs a first read
 

@@ -1,10 +1,16 @@
 import Link from "next/link";
 import { Replay } from "@/components/deck/Replay";
+import { Glass } from "@/components/deck/Glass";
 import { Build, Split } from "@/components/deck/steps";
 
-<Split wide visual={<Replay />}>
-
-<p className="act">Act 3, the result</p>
+<Split
+  wide
+  visual={
+    <Glass inset>
+      <Replay />
+    </Glass>
+  }
+>
 
 # One conversation, replayed
 

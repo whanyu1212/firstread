@@ -74,7 +74,7 @@ export function Split({ visual, wide = false, children }: { visual: ReactNode; w
       className={`grid items-center gap-10 lg:gap-14 ${wide ? "lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)]" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]"}`}
     >
       <div className="slide-text">{children}</div>
-      <div className="min-w-0">{visual}</div>
+      <div className="slide-visual min-w-0">{visual}</div>
     </div>
   );
 }

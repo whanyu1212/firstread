@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import type { Recording } from "@/lib/replay";
 import recording from "@/slides/data/replay-crisis.json";
 import { useTransition } from "./motion";
+import { Stat } from "./Stat";
 import { useStep } from "./steps";
 
 /**
@@ -32,13 +33,14 @@ export function TurnTimeline({ at: from }: { at: number }) {
     <figure
       aria-label={`One turn: the companion took ${draft.toFixed(1)}s; FirstRead read the message in ${check.toFixed(1)}s at the same time, then checked the reply in ${(total - draft).toFixed(1)}s.`}
     >
+      <Stat value={`+${(total - draft).toFixed(1)}s`} label="added by FirstRead" versus={`The reply went out at ${total.toFixed(1)}s; the companion alone took ${draft.toFixed(1)}s.`} />
       <div className="relative space-y-4">
         {BARS.map((b) => (
           <div key={b.label}>
             <p className={`mb-1.5 text-base ${b.firstread ? "text-ink" : "text-muted"}`}>{b.label}</p>
             <div className="relative h-4">
               <motion.span
-                className={`absolute inset-y-0 rounded ${b.firstread ? "bg-series-1" : "bg-line"}`}
+                className={`absolute inset-y-0 rounded ${b.firstread ? "bg-series-1" : "bg-ink/15"}`}
                 style={{ left: at(b.from) }}
                 initial={false}
                 animate={{ width: play ? at(b.to - b.from) : "0%" }}
@@ -74,7 +76,6 @@ export function TurnTimeline({ at: from }: { at: number }) {
         animate={{ opacity: play ? 1 : 0 }}
         transition={play ? t(0.4, total) : t(0)}
       >
-        Reply shown at {total.toFixed(1)}s. FirstRead added {(total - draft).toFixed(1)}s.{" "}
         <span className="text-muted">A recorded turn, played at real speed.</span>
       </motion.figcaption>
     </figure>

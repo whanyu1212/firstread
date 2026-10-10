@@ -1,21 +1,22 @@
+import { Glass } from "@/components/deck/Glass";
 import { Latency } from "@/components/deck/Latency";
 import { Roc } from "@/components/deck/Roc";
 import { Build, Point, Points, Split } from "@/components/deck/steps";
 
 <Split
   visual={
-    <div className="grid [&>*]:col-start-1 [&>*]:row-start-1">
-      <Build at={1} until={2} className="self-center">
-        <Roc at={1} />
-      </Build>
-      <Build at={2} className="self-center">
-        <Latency at={2} />
-      </Build>
-    </div>
+    <Glass at={1}>
+      <div className="grid [&>*]:col-start-1 [&>*]:row-start-1">
+        <Build at={1} until={2} className="self-center">
+          <Roc at={1} />
+        </Build>
+        <Build at={2} className="self-center">
+          <Latency at={2} />
+        </Build>
+      </div>
+    </Glass>
   }
 >
-
-<p className="act">Act 1, the pain point</p>
 
 # Why Jev
 

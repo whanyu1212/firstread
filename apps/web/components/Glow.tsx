@@ -1,6 +1,6 @@
 /**
  * Soft colour behind the glass, so it has something to frost: the landing page and the demo's frame.
- * Still, and fixed to the viewport. Sized to the viewport's width, and fainter below lg, where
+ * Still, and fixed to the viewport. The deck has its own, which moves between slides (DeckGlow). Sized to the viewport's width, and fainter below lg, where
  * single-column layouts put text over it.
  */
 export function Glow() {
