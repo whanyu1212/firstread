@@ -1,0 +1,24 @@
+import { AnswersToLevel } from "@/components/deck/AnswersToLevel";
+import { Glass } from "@/components/deck/Glass";
+import { Point, Points, Split } from "@/components/deck/steps";
+
+<Split
+  wide
+  visual={
+    <Glass at={1}>
+      <AnswersToLevel />
+    </Glass>
+  }
+>
+
+# From Jev's answers to a level
+
+Jev gives probabilities, not a verdict. The rules that turn them into NONE, WATCH, ELEVATED or CRISIS are code you can read and test.
+
+<Points>
+  <Point at={1} title="Jev answers every question">about the message in one call.</Point>
+  <Point at={2} title="Rules in code pick the level.">The highest level with a rule met wins.</Point>
+  <Point at={3} title="The conversation has a memory.">A level is the state of the conversation, not one message's reading.</Point>
+</Points>
+
+</Split>

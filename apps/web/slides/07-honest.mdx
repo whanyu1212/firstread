@@ -1,0 +1,27 @@
+import { Glass } from "@/components/deck/Glass";
+import { StillOpen } from "@/components/deck/StillOpen";
+import { Point, Points, Split } from "@/components/deck/steps";
+import iterations from "@/slides/data/iterations.json";
+
+export const first = iterations.steps[0];
+export const last = iterations.steps.at(-1);
+
+<Split
+  visual={
+    <Glass at={4}>
+      <StillOpen at={4} />
+    </Glass>
+  }
+>
+
+# Staying honest
+
+A benchmark is easy to fool by accident. These are the rules we kept to.
+
+<Points>
+  <Point at={1} title="Test messages never shape what Jev is asked.">An early draft's examples echoed test messages. We caught it and rewrote them before measuring.</Point>
+  <Point at={2} title="Tune on one set, report on another.">BHH validation to tune, test to report. One later fix did look at a test miss, a veiled goodbye; the commit says so, and the recall here predates it. {iterations.conversations.dev} multi-turn conversations to tune on, {iterations.conversations.holdout} held out, each labelled before any run.</Point>
+  <Point at={3} title="Every gain has a cost.">Recall went from {first.recall.toFixed(1)}% to {last.recall.toFixed(1)}%, and false alarms from {first.falseAlarms.toFixed(1)}% to {last.falseAlarms.toFixed(1)}%.</Point>
+</Points>
+
+</Split>
