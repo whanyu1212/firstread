@@ -215,7 +215,7 @@ export function TurnNote({
           : "Couldn't read your message in time. No unchecked reply will go out."
         : "Reading your message…";
       return (
-        <div className="text-sm" aria-live="polite">
+        <div aria-live="polite">
           <p className={check ? "font-medium" : "text-muted motion-safe:animate-node-wait"}>{read}</p>
           {check && <p className="mt-1 text-muted motion-safe:animate-node-wait">Checking the companion's reply before it's shown…</p>}
         </div>
@@ -249,7 +249,7 @@ export function TurnNote({
           </p>
         )}
         <p>
-          {replyLine(audit)} <span className="font-mono text-sm text-muted">{secs(timing.totalMs)}</span>
+          {replyLine(audit)} <span className="font-mono text-muted">{secs(timing.totalMs)}</span>
         </p>
       </div>
     );

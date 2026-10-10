@@ -81,6 +81,19 @@ export function Point({ at, title, children }: { at: number; title: string; chil
   );
 }
 
+/**
+ * The slide's text above, its figure across the full width below: for a figure that needs the room
+ * (a timeline, the replay). On a wide screen the title and its line sit side by side.
+ */
+export function Wide({ visual, children }: { visual: ReactNode; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-8 lg:gap-10">
+      <div className="slide-text slide-head">{children}</div>
+      <div className="slide-visual min-w-0">{visual}</div>
+    </div>
+  );
+}
+
 /** Text on the left, the slide's motion graphic on the right; stacked on narrow screens. */
 export function Split({ visual, wide = false, children }: { visual: ReactNode; wide?: boolean; children: ReactNode }) {
   return (

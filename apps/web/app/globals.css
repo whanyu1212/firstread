@@ -35,6 +35,11 @@
   --color-series-3: #1baf7a;
   --color-series-4: #eda100;
   --color-series-5: #e87ba4;
+  /* The deck's smallest text: figure labels and notes. 16px at the 15px base, so nothing on a slide
+     reads smaller than that on a projector or in a 1080p recording. */
+  --text-fig: 1.0667rem;
+  --text-fig--line-height: 1.45;
+
   /* The landing page's soft light behind its glass: a pale accent blue and a pale sage. */
   --color-glow-blue: #9fc3f0;
   --color-glow-sage: #b4dbc3;
@@ -101,6 +106,29 @@
 }
 :is(.slide, .slide-text) > :is(p, ul, .points) strong {
   @apply font-semibold text-ink;
+}
+
+/* A wide slide's text above its figure (Wide): on a wide screen the title on the left, its line
+   and anything after it on the right, level with the title's foot. */
+@media (min-width: 64rem) {
+  .slide-head {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 3.5rem;
+    align-items: end;
+  }
+  .slide-head > * {
+    grid-column: 2;
+  }
+  .slide-head > h1 {
+    grid-column: 1;
+    grid-row: 1 / span 9;
+    align-self: end;
+    margin-bottom: 0;
+  }
+  .slide-head > :last-child {
+    margin-bottom: 0;
+  }
 }
 
 /* A slide change: the title, then the text, then the figure settle in, while the glow drifts

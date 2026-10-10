@@ -1,25 +1,25 @@
 import Link from "next/link";
 import { Replay } from "@/components/deck/Replay";
 import { Glass } from "@/components/deck/Glass";
-import { Build, Split } from "@/components/deck/steps";
+import { Wide } from "@/components/deck/steps";
 
-<Split
-  wide
+<Wide
   visual={
     <Glass inset>
-      <Replay />
+      <Replay
+        at={1}
+        action={
+          <Link href="/demo" className="inline-flex h-10 items-center rounded-md bg-ink px-4 text-fig font-medium text-canvas hover:bg-ink/90">
+            Try it yourself at /demo
+          </Link>
+        }
+      />
     </Glass>
   }
 >
 
 # One conversation, replayed
 
-FirstRead reads every message and every reply. When a message says someone is about to act, the companion is stopped and the crisis reply goes out in under a second.
+When a message says someone is about to act, the companion is stopped and the crisis reply goes out at once.
 
-<Build at={1}>
-  <Link href="/demo" className="mt-4 inline-flex h-12 items-center rounded-md bg-ink px-6 text-lg font-medium text-canvas hover:bg-ink/90">
-    Try it yourself at /demo
-  </Link>
-</Build>
-
-</Split>
+</Wide>
