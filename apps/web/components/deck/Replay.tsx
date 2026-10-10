@@ -122,8 +122,9 @@ function Conversation({ shown }: { shown: Shown }) {
           <div key={i} className={`relative ${ROW}`}>
             <div className="space-y-2 py-3 pr-4 pl-5 text-lg">
               <UserBubble text={messageText(userMessage(t, i))} />
-              {/* Only the companion's reply is cut short: a message bubble keeps its words. */}
-              <div className="[&_p]:line-clamp-2">
+              {/* Only the companion's reply is cut short: a message bubble keeps its words. The demo's
+                  small "waiting" line is set at the deck's 16px here, without changing the demo. */}
+              <div className="[&_.text-sm]:text-fig [&_p]:line-clamp-2">
                 <CompanionReply message={phase === "done" ? reply : undefined} pending={phase !== "done"} />
               </div>
             </div>
