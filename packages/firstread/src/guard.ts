@@ -14,6 +14,7 @@
  */
 
 import { type FailureReason, type JevClient, type NoulQuestion, createJevClient, failureReason } from "./jev";
+import { DEFAULT_DEADLINE_MS, DEFAULT_WINDOW } from "./live";
 import { type Action, type RiskLevel, assessLevel, atLeast, decideAction, failClosedAction, rank } from "./policy";
 import {
   REPLY_QUESTIONS,
@@ -128,7 +129,7 @@ export class FirstRead {
   private readonly deadlineMs: number;
   private readonly replies: Replies;
 
-  constructor({ client, window = 8, deadlineMs = 3_000, replies }: FirstReadOptions = {}) {
+  constructor({ client, window = DEFAULT_WINDOW, deadlineMs = DEFAULT_DEADLINE_MS, replies }: FirstReadOptions = {}) {
     this.client = client ?? createJevClient();
     this.window = window;
     this.deadlineMs = deadlineMs;

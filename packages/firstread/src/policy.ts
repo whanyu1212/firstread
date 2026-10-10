@@ -27,7 +27,7 @@ export const atLeast = (level: RiskLevel, min: RiskLevel): boolean => rank(level
 
 const SELF_HARM_SIGNALS = ["ideation", "self_harm", "plan", "means", "intent", "imminent"] as const;
 /** Specific follow-ups: on validation they fired on SI/self-harm cases, almost never on no_crisis. */
-const FOLLOW_UPS = ["own_death_wish", "disguised_request"] as const;
+export const FOLLOW_UPS = ["own_death_wish", "disguised_request"] as const;
 
 /** Borderline: not flagged ELEVATED on its own, but the self-harm signals add up to this much. */
 export const BORDERLINE_SCORE = 0.2;
@@ -64,6 +64,39 @@ export const IMMINENT_ELEVATED = 0.2;
 
 /** Asking how to self-injure, ease or hide injuries, or avoid care at or above this is ELEVATED. */
 export const METHOD_SEEKING_ELEVATED = 0.4;
+/** A plan and access to means, both at or above this, is CRISIS. */
+export const PLAN_MEANS_CRISIS = 0.3;
+
+/** A rule: this answer at or above this cutoff. */
+export type Cutoff = readonly [signal: keyof UserSignals, cutoff: number];
+
+/**
+ * The cutoffs per level, as levelEvidence() applies them, so anything that shows the rules (the
+ * deck) shows these. CRISIS also has the plan-plus-means rule, which needs both.
+ */
+export const CRISIS_CUTOFFS: readonly Cutoff[] = [
+  ["intent", INTENT_CRISIS],
+  ["imminent", IMMINENT_CRISIS],
+  ["preparation", PREPARATION_CRISIS],
+];
+export const PLAN_MEANS_CUTOFFS: readonly Cutoff[] = [
+  ["plan", PLAN_MEANS_CRISIS],
+  ["means", PLAN_MEANS_CRISIS],
+];
+export const ELEVATED_CUTOFFS: readonly Cutoff[] = [
+  ["intent", INTENT_ELEVATED],
+  ["imminent", IMMINENT_ELEVATED],
+  ["plan", 0.2],
+  ["self_harm", 0.3],
+  ["method_seeking", METHOD_SEEKING_ELEVATED],
+  ["ideation", 0.4],
+  ["harm_to_others", 0.4],
+];
+export const WATCH_CUTOFFS: readonly Cutoff[] = [
+  ["ideation", 0.15],
+  ["self_harm", 0.15],
+  ["harm_to_others", 0.2],
+];
 
 export type CrisisRoute = "intent" | "imminent" | "preparation" | "plan_means";
 
@@ -73,7 +106,7 @@ export function crisisRoutes(p: UserSignals): CrisisRoute[] {
   if (p.intent >= INTENT_CRISIS) routes.push("intent");
   if (p.imminent >= IMMINENT_CRISIS) routes.push("imminent");
   if (p.preparation >= PREPARATION_CRISIS) routes.push("preparation");
-  if (p.plan >= 0.3 && p.means >= 0.3) routes.push("plan_means");
+  if (PLAN_MEANS_CUTOFFS.every(([signal, cutoff]) => p[signal] >= cutoff)) routes.push("plan_means");
   return routes;
 }
 
@@ -94,7 +127,7 @@ export function assessLevel(p: UserSignals): RiskLevel {
  * self-harm answers adding up (noisyOr) were part of the reason, since no one of them was.
  */
 export function levelEvidence(p: UserSignals): { level: RiskLevel; answers: LevelAnswer[]; combined: number | null } {
-  const met = (rules: [keyof UserSignals, number][]): LevelAnswer[] =>
+  const met = (rules: readonly Cutoff[]): LevelAnswer[] =>
     rules
       .filter(([signal, cutoff]) => p[signal] >= cutoff)
       .map(([signal, cutoff]) => ({ signal, value: p[signal], cutoff }))
@@ -102,23 +135,10 @@ export function levelEvidence(p: UserSignals): { level: RiskLevel; answers: Leve
 
   const routes = crisisRoutes(p);
   if (routes.length > 0) {
-    const crisis: [keyof UserSignals, number][] = [
-      ["intent", INTENT_CRISIS],
-      ["imminent", IMMINENT_CRISIS],
-      ["preparation", PREPARATION_CRISIS],
-      ...(routes.includes("plan_means") ? ([["plan", 0.3], ["means", 0.3]] as [keyof UserSignals, number][]) : []),
-    ];
+    const crisis = [...CRISIS_CUTOFFS, ...(routes.includes("plan_means") ? PLAN_MEANS_CUTOFFS : [])];
     return { level: "CRISIS", answers: met(crisis), combined: null };
   }
-  const elevated = met([
-    ["intent", INTENT_ELEVATED],
-    ["imminent", IMMINENT_ELEVATED],
-    ["plan", 0.2],
-    ["self_harm", 0.3],
-    ["method_seeking", METHOD_SEEKING_ELEVATED],
-    ["ideation", 0.4],
-    ["harm_to_others", 0.4],
-  ]);
+  const elevated = met(ELEVATED_CUTOFFS);
   if (elevated.length > 0) return { level: "ELEVATED", answers: elevated, combined: null };
   // Weak signals that add up, confirmed by a follow-up. Follow-ups can only raise the level.
   const combined = noisyOr(p);
@@ -126,11 +146,7 @@ export function levelEvidence(p: UserSignals): { level: RiskLevel; answers: Leve
     const followUps = met(FOLLOW_UPS.map((key) => [key, FOLLOW_UP_CONFIRMS]));
     if (followUps.length > 0) return { level: "ELEVATED", answers: followUps, combined };
   }
-  const watch = met([
-    ["ideation", 0.15],
-    ["self_harm", 0.15],
-    ["harm_to_others", 0.2],
-  ]);
+  const watch = met(WATCH_CUTOFFS);
   if (watch.length > 0) return { level: "WATCH", answers: watch, combined: null };
   // counselor_concern is too broad to escalate on (depression, grief, addiction), so only watch.
   if (combined >= BORDERLINE_SCORE && p.counselor_concern >= FOLLOW_UP_CONFIRMS) {

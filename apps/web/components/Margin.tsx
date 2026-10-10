@@ -9,47 +9,13 @@ import { handoffLine } from "@/lib/handoff";
 import { draftChange, pct, why } from "@/lib/margin";
 import { dataPart, secs } from "./CompanionChat";
 import { LEVEL_COLOR, LEVEL_LABEL, LEVEL_MEANING, LEVEL_ORDER } from "./levels";
+import { REPLY_SIGNAL_LABELS, USER_SIGNAL_GROUPS, USER_SIGNAL_LABELS } from "./signals";
 
 /**
  * FirstRead's side of the demo, for presenters and reviewers: a note in the margin beside each
  * turn, and the margin rule between them, coloured by the conversation's level after each turn.
  * Never shown to the person chatting in production: this belongs on the reviewer page (HY-20).
  */
-
-/** Jev's questions about the user's message, in plain words. */
-const USER_SIGNAL_LABELS: Record<string, string> = {
-  ideation: "Thoughts of not wanting to live",
-  self_harm: "Hurting themselves, or urges to",
-  method_seeking: "Asking how to hurt themselves",
-  plan: "Thought about how or when",
-  means: "Has a way to do it",
-  intent: "Intends to act",
-  preparation: "Preparing, like goodbye letters",
-  imminent: "May act soon",
-  harm_to_others: "Wants to harm someone else",
-  own_death_wish: "Their own wish to die",
-  disguised_request: "Could be asking how, indirectly",
-  counselor_concern: "A counsellor would check in",
-  latest_adds_risk: "Adds something new",
-  asks_for_person: "Asking for a real person",
-};
-
-/** Jev's answers about the message, grouped by what each question is about. */
-const USER_SIGNAL_GROUPS: { title: string; keys: string[] }[] = [
-  { title: "Thoughts of suicide", keys: ["ideation", "own_death_wish"] },
-  { title: "Steps toward acting", keys: ["plan", "means", "intent", "preparation", "imminent"] },
-  { title: "Self-harm", keys: ["self_harm", "method_seeking", "disguised_request"] },
-  { title: "Harm to others", keys: ["harm_to_others"] },
-  { title: "The conversation", keys: ["counselor_concern", "latest_adds_risk", "asks_for_person"] },
-];
-
-/** Jev's questions about the companion's draft. */
-const REPLY_SIGNAL_LABELS: Record<string, string> = {
-  offers_support_resources: "Points to support",
-  dismisses_risk: "Moves past the distress",
-  enables_harm: "Could enable harm",
-  clinical_overreach: "Gives clinical advice",
-};
 
 /** Where the rule's dot sits in a row: level with the middle of a one-line user message. */
 export const NODE_Y = "2.375rem";
@@ -295,7 +261,7 @@ export function TurnNote({
     ? USER_SIGNAL_GROUPS.map((g) => ({
         ...g,
         rows: g.keys
-          .map((k) => [USER_SIGNAL_LABELS[k]!, user[k as keyof typeof user]] as [string, number])
+          .map((k) => [USER_SIGNAL_LABELS[k], user[k]] as [string, number])
           .sort((a, b) => b[1] - a[1]),
       }))
     : [];
@@ -304,7 +270,7 @@ export function TurnNote({
     ? Object.entries(audit.replySignals)
         .filter(([k]) => k in REPLY_SIGNAL_LABELS)
         .sort((a, b) => b[1] - a[1])
-        .map(([k, v]) => [REPLY_SIGNAL_LABELS[k]!, v] as [string, number])
+        .map(([k, v]) => [REPLY_SIGNAL_LABELS[k as keyof typeof REPLY_SIGNAL_LABELS], v] as [string, number])
     : [];
 
   // Three things, one line each: what happened, why, and what changed in the reply.

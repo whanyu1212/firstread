@@ -11,6 +11,7 @@ export {
   failureReason,
 } from "./jev";
 export type { AskOptions, FailureReason, JevClient, NoulQuestion } from "./jev";
+export { DEFAULT_DEADLINE_MS, DEFAULT_WINDOW } from "./live";
 export {
   RISK_LEVELS,
   assessLevel,
