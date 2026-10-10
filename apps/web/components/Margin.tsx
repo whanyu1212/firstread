@@ -34,26 +34,13 @@ const USER_SIGNAL_LABELS: Record<string, string> = {
   asks_for_person: "Asking for a real person",
 };
 
-/**
- * Jev's answers about the message, grouped by what FirstRead uses them for (policy.ts, risk.ts,
- * turn.ts), so the details say why each question is asked.
- */
-const USER_SIGNAL_GROUPS: { title: string; note: string; keys: string[] }[] = [
-  {
-    title: "Set the level",
-    note: "Each can raise the level on its own.",
-    keys: ["ideation", "self_harm", "method_seeking", "plan", "means", "intent", "preparation", "imminent", "harm_to_others"],
-  },
-  {
-    title: "Confirm weak signals",
-    note: "Only count when small self-harm signals add up.",
-    keys: ["own_death_wish", "disguised_request", "counselor_concern"],
-  },
-  {
-    title: "Context",
-    note: "Whether this message adds anything, which lets a level settle, and whether they asked for a person.",
-    keys: ["latest_adds_risk", "asks_for_person"],
-  },
+/** Jev's answers about the message, grouped by what each question is about. */
+const USER_SIGNAL_GROUPS: { title: string; keys: string[] }[] = [
+  { title: "Thoughts of suicide", keys: ["ideation", "own_death_wish"] },
+  { title: "Steps toward acting", keys: ["plan", "means", "intent", "preparation", "imminent"] },
+  { title: "Self-harm", keys: ["self_harm", "method_seeking", "disguised_request"] },
+  { title: "Harm to others", keys: ["harm_to_others"] },
+  { title: "The conversation", keys: ["counselor_concern", "latest_adds_risk", "asks_for_person"] },
 ];
 
 /** Jev's questions about the companion's draft. */
@@ -349,16 +336,10 @@ export function TurnNote({
           </summary>
           <div className="mt-2 space-y-3">
             <JevStrip check={check} audit={audit} timing={timing} />
-            <p className="text-xs font-medium text-ink/75">About this message</p>
             {userGroups.map((g) => (
-              <Bars key={g.title} caption={g.title} note={g.note} rows={g.rows} />
+              <Bars key={g.title} caption={g.title} rows={g.rows} />
             ))}
-            {replyRows.length > 0 && (
-              <>
-                <p className="text-xs font-medium text-ink/75">About the companion's draft</p>
-                <Bars caption="Decide the reply" note="Whether the draft goes out as written." rows={replyRows} />
-              </>
-            )}
+            {replyRows.length > 0 && <Bars caption="The companion's draft" rows={replyRows} />}
             <Evidence score={risk.score} thresholds={risk.thresholds} />
           </div>
         </details>
@@ -522,15 +503,10 @@ function Segment({ span, pct, color }: { span: Span; pct: (sec: number) => strin
 }
 
 /** Jev's answers, the chance of yes, as bars. */
-function Bars({ rows, caption, note }: { rows: [string, number][]; caption?: string; note?: string }) {
+function Bars({ rows, caption }: { rows: [string, number][]; caption?: string }) {
   return (
     <figure>
-      {caption && (
-        <figcaption className="mb-1 text-xs">
-          <span className="block font-medium">{caption}</span>
-          {note && <span className="block text-muted">{note}</span>}
-        </figcaption>
-      )}
+      {caption && <figcaption className="mb-1 text-xs font-medium">{caption}</figcaption>}
       <ul className="space-y-1">
         {rows.map(([label, v]) => (
           <li key={label} className="grid grid-cols-[minmax(0,1fr)_4.5rem_2.25rem] items-center gap-2 text-xs">
