@@ -1,0 +1,48 @@
+{
+ "source": "BHH test split, SI/self-harm vs no_crisis; each run rescored with its commit's policy.ts",
+ "steps": [
+  {
+   "change": "Columbia-style questions",
+   "miss": "Where we started: one cutoff per question, per level.",
+   "commit": "0c8e36b",
+   "date": "2026-09-25",
+   "results": "bhh-test-2026-09-25T07-39-50-605Z.jsonl",
+   "recall": 88.1,
+   "falseAlarms": 1.5,
+   "cases": {
+    "positive": 519,
+    "negative": 1231
+   }
+  },
+  {
+   "change": "Follow-up questions for borderline turns",
+   "miss": "Weak signals that add up, with no one answer high enough on its own.",
+   "commit": "c6e97c5",
+   "date": "2026-09-25",
+   "results": "bhh-test-2026-09-25T07-39-50-605Z.jsonl",
+   "recall": 95.4,
+   "falseAlarms": 3.2,
+   "cases": {
+    "positive": 519,
+    "negative": 1231
+   }
+  },
+  {
+   "change": "A question about preparation",
+   "miss": "Goodbye letters and gathering means reached CRISIS only by accident, or not at all.",
+   "commit": "5ddbd89",
+   "date": "2026-09-25",
+   "results": "bhh-test-2026-09-25T10-41-25-619Z.jsonl",
+   "recall": 96,
+   "falseAlarms": 3.5,
+   "cases": {
+    "positive": 519,
+    "negative": 1231
+   }
+  }
+ ],
+ "conversations": {
+  "dev": 37,
+  "holdout": 21
+ }
+}
