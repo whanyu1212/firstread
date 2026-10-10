@@ -32,7 +32,7 @@ export function FirstReadTurn() {
   const level = LEVEL_COLOR[check.level];
 
   return (
-    <figure className="overflow-hidden rounded-xl border border-line bg-canvas">
+    <figure className="overflow-hidden rounded-xl border border-line bg-canvas text-fig">
       <div className="relative">
         {/* The margin FirstRead writes in, from the middle of the rule. */}
         <div className="absolute inset-y-0 right-0 hidden w-[15.25rem] bg-margin sm:block" aria-hidden="true" />
@@ -50,7 +50,7 @@ export function FirstReadTurn() {
           <Node show={step >= 1} color={level} delay={0.5 + check.ms / 1000} />
           <Note show={step >= 1} delay={0.5 + check.ms / 1000}>
             <span className="font-semibold">Your message: {LEVEL_LABEL[check.level]}</span>
-            <span className="block text-sm text-muted">Read in {s(check.ms)}, while the companion writes</span>
+            <span className="block text-fig text-muted">Read in {s(check.ms)}, while the companion writes</span>
           </Note>
         </div>
 
@@ -81,14 +81,14 @@ export function FirstReadTurn() {
           <Node show={step >= 2} color={level} delay={0.9 + replyCheckMs / 1000} />
           <Note show={step >= 2} delay={0.9 + replyCheckMs / 1000}>
             <span className="font-semibold">The draft: {audit.action === "replace" ? "replaced" : "sent"}</span>
-            <span className="block text-sm text-muted">
+            <span className="block text-fig text-muted">
               At {LEVEL_LABEL[audit.level]} a reply must point to support (0.5 or more); this one scored{" "}
               {audit.replySignals?.offers_support_resources.toFixed(2)}. Checked in {s(replyCheckMs)}.
             </span>
           </Note>
         </div>
       </div>
-      <figcaption className="border-t border-line px-5 py-3 text-sm text-muted">
+      <figcaption className="border-t border-line px-5 py-3 text-fig text-muted">
         A recorded turn: the companion's draft never reached the person.
       </figcaption>
     </figure>
@@ -121,7 +121,7 @@ function Note({ show, delay, children }: { show: boolean; delay: number; childre
   const t = useTransition();
   return (
     <motion.p
-      className="px-4 pt-1.5 text-base leading-snug max-sm:col-start-1 max-sm:row-start-2 max-sm:mx-4 max-sm:mt-2 max-sm:rounded-lg max-sm:bg-margin max-sm:py-2"
+      className="px-4 pt-1.5 text-fig leading-snug max-sm:col-start-1 max-sm:row-start-2 max-sm:mx-4 max-sm:mt-2 max-sm:rounded-lg max-sm:bg-margin max-sm:py-2"
       initial={false}
       animate={show ? { opacity: 1, x: 0 } : { opacity: 0, x: -8 }}
       transition={show ? t(DURATION.base, delay) : t(0)}
@@ -146,7 +146,7 @@ function Draft({ replaced, delay, reply }: { replaced: boolean; delay: number; r
         transition={replaced ? t(DURATION.fast, delay) : t(0)}
         aria-hidden="true"
       >
-        <p className="text-sm text-muted">The companion's draft, held</p>
+        <p className="text-fig text-muted">The companion's draft, held</p>
         <span className="block h-2.5 w-11/12 rounded bg-raised" />
         <span className="block h-2.5 w-3/4 rounded bg-raised" />
       </motion.div>

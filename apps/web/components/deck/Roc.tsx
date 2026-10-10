@@ -73,20 +73,20 @@ export function Roc({ at }: { at: number }) {
         {[0.6, 0.8, 1].map((v) => (
           <g key={v}>
             <line x1={x(0)} x2={x(X_MAX)} y1={y(v)} y2={y(v)} className="stroke-line" />
-            <text x={PAD.left - 10} y={y(v) + 5} textAnchor="end" className="fill-muted font-mono text-[14px]">
+            <text x={PAD.left - 10} y={y(v) + 5} textAnchor="end" className="fill-muted font-mono text-[16px]">
               {pct(v)}
             </text>
           </g>
         ))}
         {[0, 0.05, 0.1, 0.15, 0.2].map((v) => (
-          <text key={v} x={x(v)} y={H - PAD.bottom + 22} textAnchor={v === 0 ? "start" : v === X_MAX ? "end" : "middle"} className="fill-muted font-mono text-[14px]">
+          <text key={v} x={x(v)} y={H - PAD.bottom + 22} textAnchor={v === 0 ? "start" : v === X_MAX ? "end" : "middle"} className="fill-muted font-mono text-[16px]">
             {pct(v)}
           </text>
         ))}
-        <text x={x(X_MAX / 2)} y={H - 6} textAnchor="middle" className="fill-muted text-[14px]">
+        <text x={x(X_MAX / 2)} y={H - 6} textAnchor="middle" className="fill-muted text-[16px]">
           False alarms: no-risk messages flagged
         </text>
-        <text x={PAD.left - 44} y={14} className="fill-muted text-[14px]">
+        <text x={PAD.left - 44} y={14} className="fill-muted text-[16px]">
           Recall: self-harm risk caught
         </text>
 
@@ -125,13 +125,13 @@ export function Roc({ at }: { at: number }) {
         {/* Only Jev is labelled on the chart; the table below names every curve. Its label sits up
             and to the left, clear of its curve, which runs on to the right. */}
         <motion.text x={x(MARK_FAR) - 12} y={y(recallAt(jev.run.roc, MARK_FAR)) - 10} textAnchor="end"
-          className="fill-ink text-[15px] font-semibold" {...show(DURATION.slow + 0.2)}>
+          className="fill-ink text-[16px] font-semibold" {...show(DURATION.slow + 0.2)}>
           {jev.run.name} {pct(recallAt(jev.run.roc, MARK_FAR))}
         </motion.text>
       </svg>
 
-      <table className="mt-1 w-full text-base" aria-label="Legend">
-        <thead className="text-sm text-muted">
+      <table className="mt-1 w-full text-fig" aria-label="Legend">
+        <thead className="text-fig text-muted">
           <tr>
             <th scope="col" className="pb-1 text-left font-normal">Model</th>
             <th scope="col" className="pb-1 text-right font-normal">AUC</th>
@@ -153,13 +153,12 @@ export function Roc({ at }: { at: number }) {
           ))}
         </tbody>
       </table>
-      <motion.figcaption className="mt-2 text-base" {...show(DURATION.slow + 0.4)}>
+      <motion.figcaption className="mt-2 text-fig" {...show(DURATION.slow + 0.4)}>
         Jev gives an answer in between far more often: {pct(jev.run.saturated)} of its answers are 0 or 1,
         against {pct(saturation[0]!)}–{pct(saturation.at(-1)!)} for the others.{" "}
         <span className="text-muted">
-          Luna is read from its true/false token probabilities; the flash models state a probability, at
-          low thinking. BHH test split: {bhh.cases.positive.toLocaleString("en-US")} self-harm and{" "}
-          {bhh.cases.negative.toLocaleString("en-US")} no-risk messages, all answered by every model.
+          Luna is read from its token probabilities; the flash models state one. BHH test split,{" "}
+          {(bhh.cases.positive + bhh.cases.negative).toLocaleString("en-US")} messages, all answered by every model.
         </span>
       </motion.figcaption>
     </figure>

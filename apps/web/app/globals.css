@@ -176,9 +176,10 @@
   scrollbar-gutter: stable;
 }
 
-/* The deck on a projector or a large screen: everything scales up together. */
+/* The deck on a projector or a large screen: everything scales up together. 18px keeps 1920×1080
+   at the 60rem of height a slide is laid out for at 1440×900, so a slide that fits one fits both. */
 @media (min-width: 100rem) {
   html:has(.deck) {
-    font-size: 118.75%;
+    font-size: 112.5%;
   }
 }

@@ -12,7 +12,7 @@ export function Stat({ value, label, color, versus }: { value: string; label: st
           {label}
         </span>
       </p>
-      {versus && <p className="mt-1 text-base text-muted">{versus}</p>}
+      {versus && <p className="mt-1 text-fig text-muted">{versus}</p>}
     </div>
   );
 }
