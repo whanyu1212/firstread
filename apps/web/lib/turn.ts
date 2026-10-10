@@ -14,6 +14,7 @@
 
 import { type FirstRead, type TurnAudit, type UserCheck, atLeast } from "firstread";
 import type { Draft } from "./companion";
+import { HANDOFF_REASON } from "./handoff";
 import { type Handoff, type Note, type Session, fromConversation, toConversation } from "./session";
 import { EXERCISES, type Exercise } from "./skills/exercises";
 
@@ -149,9 +150,9 @@ export async function runTurn(
   let handoff: Handoff | null = null;
   const at = new Date().toISOString();
   if (atLeast(audit.level, "CRISIS") && !atLeast(levelBefore, "CRISIS")) {
-    handoff = { reason: "FirstRead escalated the conversation to CRISIS", at };
+    handoff = { reason: HANDOFF_REASON.crisis, at };
   } else if ((audit.userSignals?.asks_for_person ?? 0) >= ASKS_FOR_PERSON) {
-    handoff = { reason: "The person asked to talk to a real person", at };
+    handoff = { reason: HANDOFF_REASON.request, at };
   }
   if (handoff) session.handoffs.push(handoff);
 

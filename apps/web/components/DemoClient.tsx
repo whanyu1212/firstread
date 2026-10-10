@@ -49,6 +49,12 @@ export function DemoClient() {
   const sentAt = useRef(new Map<string, number>());
   const rows = exchanges(chat.messages);
   for (const e of rows) if (!sentAt.current.has(e.user.id)) sentAt.current.set(e.user.id, Date.now());
+  // What FirstRead adds to a turn: the reply check, the median over the turns on screen.
+  const replyChecks = rows
+    .map((e) => (e.reply ? dataPart(e.reply, "timing")?.replyCheckMs : null))
+    .filter((ms): ms is number => typeof ms === "number")
+    .sort((a, b) => a - b);
+  const addedMs = replyChecks.length ? replyChecks[Math.floor(replyChecks.length / 2)]! : null;
   const latestRisk = [...chat.messages]
     .reverse()
     .map((m) => dataPart(m, "risk"))
@@ -138,7 +144,7 @@ export function DemoClient() {
             <Composer chat={chat} />
           </div>
           <div className="hidden lg:col-start-3 lg:block lg:px-5 lg:py-3">
-            <MarginKey />
+            <MarginKey addedMs={addedMs} />
           </div>
         </footer>
       </section>

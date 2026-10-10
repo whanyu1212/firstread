@@ -1,9 +1,12 @@
 "use client";
 
 import type { RiskLevel } from "firstread";
+import type { LevelAnswer } from "firstread/policy";
 import { useReducedMotion } from "motion/react";
 import { type ReactNode, useEffect, useState } from "react";
 import type { ChatData, ChatMessage } from "@/lib/chat";
+import { handoffLine } from "@/lib/handoff";
+import { draftChange, pct, why } from "@/lib/margin";
 import { dataPart, secs } from "./CompanionChat";
 import { LEVEL_COLOR, LEVEL_LABEL, LEVEL_MEANING, LEVEL_ORDER } from "./levels";
 
@@ -13,27 +16,39 @@ import { LEVEL_COLOR, LEVEL_LABEL, LEVEL_MEANING, LEVEL_ORDER } from "./levels";
  * Never shown to the person chatting in production: this belongs on the reviewer page (HY-20).
  */
 
+/** Jev's questions about the user's message, in plain words. */
 const USER_SIGNAL_LABELS: Record<string, string> = {
   ideation: "Thoughts of not wanting to live",
-  self_harm: "Self-harm",
-  method_seeking: "Asking about methods",
-  plan: "A plan",
-  means: "Access to means",
-  intent: "Intent",
-  preparation: "Preparation",
-  imminent: "Acting soon",
-  harm_to_others: "Harm to others",
+  self_harm: "Hurting themselves, or urges to",
+  method_seeking: "Asking how to hurt themselves",
+  plan: "Thought about how or when",
+  means: "Has a way to do it",
+  intent: "Intends to act",
+  preparation: "Preparing, like goodbye letters",
+  imminent: "May act soon",
+  harm_to_others: "Wants to harm someone else",
   own_death_wish: "Their own wish to die",
-  disguised_request: "Disguised request",
+  disguised_request: "Could be asking how, indirectly",
   counselor_concern: "A counsellor would check in",
-  asks_for_person: "Asking for a person",
+  latest_adds_risk: "Adds something new",
+  asks_for_person: "Asking for a real person",
 };
 
+/** Jev's answers about the message, grouped by what each question is about. */
+const USER_SIGNAL_GROUPS: { title: string; keys: string[] }[] = [
+  { title: "Thoughts of suicide", keys: ["ideation", "own_death_wish"] },
+  { title: "Steps toward acting", keys: ["plan", "means", "intent", "preparation", "imminent"] },
+  { title: "Self-harm", keys: ["self_harm", "method_seeking", "disguised_request"] },
+  { title: "Harm to others", keys: ["harm_to_others"] },
+  { title: "The conversation", keys: ["counselor_concern", "latest_adds_risk", "asks_for_person"] },
+];
+
+/** Jev's questions about the companion's draft. */
 const REPLY_SIGNAL_LABELS: Record<string, string> = {
   offers_support_resources: "Points to support",
-  dismisses_risk: "Dismisses the risk",
+  dismisses_risk: "Moves past the distress",
   enables_harm: "Could enable harm",
-  clinical_overreach: "Clinical overreach",
+  clinical_overreach: "Gives clinical advice",
 };
 
 /** Where the rule's dot sits in a row: level with the middle of a one-line user message. */
@@ -111,8 +126,11 @@ export function NowSummary({ risk, waiting = false }: { risk: ChatData["risk"] |
   );
 }
 
-/** How to read the margin: the rule's colours, and which colour is Jev. */
-export function MarginKey() {
+/**
+ * How to read the margin: the rule's colours, which colour is Jev, and, once a turn is done, how
+ * much time FirstRead adds: the reply check (the user check runs while the companion writes).
+ */
+export function MarginKey({ addedMs }: { addedMs?: number | null }) {
   return (
     <div className="space-y-1.5 text-xs text-muted">
       <ul className="flex flex-wrap gap-x-3 gap-y-1" aria-label="Levels">
@@ -124,7 +142,9 @@ export function MarginKey() {
         ))}
       </ul>
       <p>
-        <span className="font-semibold text-accent">Blue is Jev.</span> Its answers are probabilities, from 0 to 1.
+        <span className="font-semibold text-accent">Blue is Jev.</span> Its answers are the chance the answer to a
+        yes/no question is yes.
+        {addedMs != null && ` It reads each message while the companion writes, so checking adds about ${secs(addedMs)}.`}
       </p>
     </div>
   );
@@ -153,6 +173,44 @@ function replyLine(audit: ChatData["audit"]): string {
   if (audit.action === "send") return "Sent the companion's reply as written.";
   if (audit.action === "replace") return "Replaced the companion's reply with a safe one.";
   return "Sent the crisis reply.";
+}
+
+/** Jev's answers that set a reading, as the questions and the chance of yes. */
+function Answers({ answers, combined }: { answers: LevelAnswer[]; combined: number | null }) {
+  const rows = answers.map((a) => [USER_SIGNAL_LABELS[a.signal] ?? a.signal, a.value] as [string, number]);
+  return (
+    <figure>
+      <figcaption className="mb-1 text-xs text-muted">What Jev saw in this message</figcaption>
+      {combined === null ? (
+        <AnswerRows rows={rows} />
+      ) : (
+        // No one weak answer was the reason: they add up, and another answer confirms them.
+        <>
+          <AnswerRows rows={[["Small self-harm signals, together", combined]]} />
+          <p className="mt-1.5 mb-1 text-xs text-muted">confirmed by</p>
+          <AnswerRows rows={rows} />
+        </>
+      )}
+    </figure>
+  );
+}
+
+function AnswerRows({ rows }: { rows: [string, number][] }) {
+  return (
+    <ul className="space-y-1">
+      {rows.map(([label, v]) => (
+        <li key={label} className="grid grid-cols-[minmax(0,1fr)_3rem_2.5rem] items-center gap-2 text-sm">
+          <span className="truncate" title={label}>
+            {label}
+          </span>
+          <span className="h-1.5 rounded-full bg-line" aria-hidden="true">
+            <span className="block h-full rounded-full bg-accent" style={{ width: pct(v) }} />
+          </span>
+          <span className="text-right font-mono text-xs text-muted">{pct(v)}</span>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 /**
@@ -208,11 +266,22 @@ export function TurnNote({
   }
 
   const { title, reason } = headline(risk, audit, before);
+  const { answers, combined, note } = why(risk, audit, reason);
+  const change = draftChange(audit);
   if (compact) {
     return (
       <div className="space-y-1">
         <p className="font-semibold tracking-tight">{title}</p>
-        {reason && <p className="text-muted">{reason}</p>}
+        {/* A turn already at CRISIS is explained by its reply line. */}
+        {audit.shortCircuit !== "already-crisis" && (
+          <p className="text-muted">
+            {answers.length === 0
+              ? note
+              : combined !== null
+                ? `Small self-harm signals ${pct(combined)}, confirmed by ${answers.map((a) => `${USER_SIGNAL_LABELS[a.signal]?.toLowerCase()} ${pct(a.value)}`).join(" and ")}`
+                : answers.slice(0, 2).map((a) => `${USER_SIGNAL_LABELS[a.signal]} ${pct(a.value)}`).join(", ")}
+          </p>
+        )}
         <p>
           {replyLine(audit)} <span className="font-mono text-sm text-muted">{secs(timing.totalMs)}</span>
         </p>
@@ -222,54 +291,59 @@ export function TurnNote({
   const handoff = reply && dataPart(reply, "handoff");
   const exercise = reply && dataPart(reply, "exercise");
   const user = audit.userSignals;
-  const userRows = user
-    ? Object.entries(user)
-        .filter(([k]) => k in USER_SIGNAL_LABELS)
-        .sort((a, b) => b[1] - a[1])
-        .map(([k, v]) => [USER_SIGNAL_LABELS[k]!, v] as [string, number])
+  const userGroups = user
+    ? USER_SIGNAL_GROUPS.map((g) => ({
+        ...g,
+        rows: g.keys
+          .map((k) => [USER_SIGNAL_LABELS[k]!, user[k as keyof typeof user]] as [string, number])
+          .sort((a, b) => b[1] - a[1]),
+      }))
     : [];
+  const answerCount = userGroups.reduce((n, g) => n + g.rows.length, 0);
   const replyRows = audit.replySignals
     ? Object.entries(audit.replySignals)
         .filter(([k]) => k in REPLY_SIGNAL_LABELS)
         .sort((a, b) => b[1] - a[1])
         .map(([k, v]) => [REPLY_SIGNAL_LABELS[k]!, v] as [string, number])
     : [];
-  const strongest = userRows[0];
 
+  // Three things, one line each: what happened, why, and what changed in the reply.
   return (
     <div className="space-y-2.5">
-      <div>
-        <p className="flex items-start justify-between gap-3">
-          <span className="font-semibold tracking-tight">{title}</span>
+      <p className="flex items-start justify-between gap-3">
+        <span className="font-semibold tracking-tight">{title}</span>
+        <span className="flex shrink-0 items-center gap-2">
+          <span className="font-mono text-xs text-muted" title="From the message to the reply on screen">
+            {secs(timing.totalMs)}
+          </span>
           <Decision audit={audit} />
-        </p>
-        {reason && <p className="mt-0.5 text-sm text-muted">{reason}</p>}
-      </div>
-
-      <JevStrip check={check} audit={audit} timing={timing} />
-
-      {audit.failures.length > 0 && (
-        <p className="text-sm text-danger">
-          The {audit.failures.map((f) => `${f.check} check (${f.reason})`).join(" and ")} didn't answer, so FirstRead
-          failed closed.
-        </p>
-      )}
-      {strongest && <Bars caption="Jev's strongest answer about this message" rows={[strongest]} />}
+        </span>
+      </p>
+      {answers.length > 0 && <Answers answers={answers} combined={combined} />}
+      {note && <p className={`text-sm ${!audit.userSignals && !audit.shortCircuit ? "text-danger" : "text-muted"}`}>{note}</p>}
+      {change && <p className="text-sm">{change}</p>}
       {(handoff || exercise) && (
         <ul className="space-y-1 text-sm">
-          {handoff && <li>Recorded a request for a person. {handoff.reason}. No one is on call for the demo.</li>}
+          {handoff && <li>{handoffLine(handoff.reason)}</li>}
           {exercise && <li>Offered an exercise: {exercise.name}.</li>}
         </ul>
       )}
 
-      <details className="text-sm">
-        <summary className="cursor-pointer text-accent">All of Jev's answers, and the evidence</summary>
-        <div className="mt-2 space-y-3">
-          {user && <Bars caption="Your message" rows={[["This message adds", user.latest_adds_risk], ...userRows]} />}
-          {replyRows.length > 0 && <Bars caption="The companion's reply" rows={replyRows} />}
-          <Evidence score={risk.score} thresholds={risk.thresholds} />
-        </div>
-      </details>
+      {user && (
+        <details className="text-sm">
+          <summary className="cursor-pointer text-accent">
+            Jev's {answerCount + replyRows.length} answers, and the timing
+          </summary>
+          <div className="mt-2 space-y-3">
+            <JevStrip check={check} audit={audit} timing={timing} />
+            {userGroups.map((g) => (
+              <Bars key={g.title} caption={g.title} rows={g.rows} />
+            ))}
+            {replyRows.length > 0 && <Bars caption="The companion's draft" rows={replyRows} />}
+            <Evidence score={risk.score} thresholds={risk.thresholds} />
+          </div>
+        </details>
+      )}
     </div>
   );
 }
@@ -428,11 +502,11 @@ function Segment({ span, pct, color }: { span: Span; pct: (sec: number) => strin
   );
 }
 
-/** Jev's answers, which are probabilities, as bars from 0 to 1. */
+/** Jev's answers, the chance of yes, as bars. */
 function Bars({ rows, caption }: { rows: [string, number][]; caption?: string }) {
   return (
     <figure>
-      {caption && <figcaption className="mb-1 text-xs text-muted">{caption}</figcaption>}
+      {caption && <figcaption className="mb-1 text-xs font-medium">{caption}</figcaption>}
       <ul className="space-y-1">
         {rows.map(([label, v]) => (
           <li key={label} className="grid grid-cols-[minmax(0,1fr)_4.5rem_2.25rem] items-center gap-2 text-xs">
@@ -442,7 +516,7 @@ function Bars({ rows, caption }: { rows: [string, number][]; caption?: string })
             <span className="h-1.5 rounded-full bg-line" aria-hidden="true">
               <span className="block h-full rounded-full bg-accent" style={{ width: `${Math.round(v * 100)}%` }} />
             </span>
-            <span className="text-right font-mono text-muted">{v.toFixed(2)}</span>
+            <span className="text-right font-mono text-muted">{pct(v)}</span>
           </li>
         ))}
       </ul>

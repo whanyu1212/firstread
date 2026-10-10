@@ -77,35 +77,70 @@ export function crisisRoutes(p: UserSignals): CrisisRoute[] {
   return routes;
 }
 
+/** One of Jev's answers that set a reading, with the cutoff it met. */
+export type LevelAnswer = { signal: keyof UserSignals; value: number; cutoff: number };
+
 /**
  * Risk level for a single user turn, from yes/no probabilities. The conversation's level comes
  * from updateRisk() in risk.ts, which also weighs context and history.
  */
 export function assessLevel(p: UserSignals): RiskLevel {
-  if (crisisRoutes(p).length > 0) return "CRISIS";
-  if (
-    p.intent >= INTENT_ELEVATED ||
-    p.imminent >= IMMINENT_ELEVATED ||
-    p.plan >= 0.2 ||
-    p.self_harm >= 0.3 ||
-    p.method_seeking >= METHOD_SEEKING_ELEVATED ||
-    p.ideation >= 0.4 ||
-    p.harm_to_others >= 0.4
-  ) {
-    return "ELEVATED";
+  return levelEvidence(p).level;
+}
+
+/**
+ * assessLevel's reading together with the answers that set it, strongest first: what a presenter
+ * or reviewer is shown as the reason for a level. NONE has no answers. `combined` is set when weak
+ * self-harm answers adding up (noisyOr) were part of the reason, since no one of them was.
+ */
+export function levelEvidence(p: UserSignals): { level: RiskLevel; answers: LevelAnswer[]; combined: number | null } {
+  const met = (rules: [keyof UserSignals, number][]): LevelAnswer[] =>
+    rules
+      .filter(([signal, cutoff]) => p[signal] >= cutoff)
+      .map(([signal, cutoff]) => ({ signal, value: p[signal], cutoff }))
+      .sort((a, b) => b.value - a.value);
+
+  const routes = crisisRoutes(p);
+  if (routes.length > 0) {
+    const crisis: [keyof UserSignals, number][] = [
+      ["intent", INTENT_CRISIS],
+      ["imminent", IMMINENT_CRISIS],
+      ["preparation", PREPARATION_CRISIS],
+      ...(routes.includes("plan_means") ? ([["plan", 0.3], ["means", 0.3]] as [keyof UserSignals, number][]) : []),
+    ];
+    return { level: "CRISIS", answers: met(crisis), combined: null };
   }
+  const elevated = met([
+    ["intent", INTENT_ELEVATED],
+    ["imminent", IMMINENT_ELEVATED],
+    ["plan", 0.2],
+    ["self_harm", 0.3],
+    ["method_seeking", METHOD_SEEKING_ELEVATED],
+    ["ideation", 0.4],
+    ["harm_to_others", 0.4],
+  ]);
+  if (elevated.length > 0) return { level: "ELEVATED", answers: elevated, combined: null };
   // Weak signals that add up, confirmed by a follow-up. Follow-ups can only raise the level.
-  if (noisyOr(p) >= BORDERLINE_SCORE && FOLLOW_UPS.some((key) => p[key] >= FOLLOW_UP_CONFIRMS)) {
-    return "ELEVATED";
+  const combined = noisyOr(p);
+  if (combined >= BORDERLINE_SCORE) {
+    const followUps = met(FOLLOW_UPS.map((key) => [key, FOLLOW_UP_CONFIRMS]));
+    if (followUps.length > 0) return { level: "ELEVATED", answers: followUps, combined };
   }
-  if (p.ideation >= 0.15 || p.self_harm >= 0.15 || p.harm_to_others >= 0.2) {
-    return "WATCH";
-  }
+  const watch = met([
+    ["ideation", 0.15],
+    ["self_harm", 0.15],
+    ["harm_to_others", 0.2],
+  ]);
+  if (watch.length > 0) return { level: "WATCH", answers: watch, combined: null };
   // counselor_concern is too broad to escalate on (depression, grief, addiction), so only watch.
-  if (noisyOr(p) >= BORDERLINE_SCORE && p.counselor_concern >= FOLLOW_UP_CONFIRMS) {
-    return "WATCH";
+  if (combined >= BORDERLINE_SCORE && p.counselor_concern >= FOLLOW_UP_CONFIRMS) {
+    return {
+      level: "WATCH",
+      answers: [{ signal: "counselor_concern", value: p.counselor_concern, cutoff: FOLLOW_UP_CONFIRMS }],
+      combined,
+    };
   }
-  return "NONE";
+  return { level: "NONE", answers: [], combined: null };
 }
 
 /**

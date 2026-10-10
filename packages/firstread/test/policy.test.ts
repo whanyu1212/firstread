@@ -7,6 +7,7 @@ import {
   assessLevel,
   decideAction,
   escalate,
+  levelEvidence,
   noisyOr,
 } from "../src/policy";
 import type { ReplySignals, UserSignals } from "../src/questions";
@@ -103,4 +104,45 @@ describe("decideAction", () => {
     expect(decideAction("WATCH", reply({ dismisses_risk: 0.6 }))).toBe("replace"));
   it("normal reply sent", () =>
     expect(decideAction("NONE", reply({ offers_support_resources: 0 }))).toBe("send"));
+});
+
+describe("levelEvidence", () => {
+  // assessLevel before it was built on levelEvidence, kept as the oracle.
+  function oracle(p: UserSignals): string {
+    if (p.intent >= 0.35 || p.imminent >= 0.4 || p.preparation >= 0.4 || (p.plan >= 0.3 && p.means >= 0.3)) return "CRISIS";
+    if (p.intent >= 0.2 || p.imminent >= 0.2 || p.plan >= 0.2 || p.self_harm >= 0.3 || p.method_seeking >= 0.4 || p.ideation >= 0.4 || p.harm_to_others >= 0.4) return "ELEVATED";
+    if (noisyOr(p) >= 0.2 && (p.own_death_wish >= 0.5 || p.disguised_request >= 0.5)) return "ELEVATED";
+    if (p.ideation >= 0.15 || p.self_harm >= 0.15 || p.harm_to_others >= 0.2) return "WATCH";
+    if (noisyOr(p) >= 0.2 && p.counselor_concern >= 0.5) return "WATCH";
+    return "NONE";
+  }
+  let seed = 7;
+  const random = () => ((seed = (seed * 1664525 + 1013904223) % 2 ** 32) / 2 ** 32);
+  // Mostly small answers, as real ones are, so every rule is reached.
+  const sample = (): UserSignals =>
+    Object.fromEntries(Object.keys(QUIET_USER).map((k) => [k, random() < 0.7 ? random() * 0.3 : random()])) as UserSignals;
+
+  it("reads the same level as before, with answers that meet their cutoffs", () => {
+    for (let i = 0; i < 20000; i++) {
+      const p = sample();
+      const { level, answers } = levelEvidence(p);
+      expect(level).toBe(oracle(p));
+      expect(assessLevel(p)).toBe(level);
+      expect(answers.length > 0).toBe(level !== "NONE");
+      for (const a of answers) expect(a.value).toBeGreaterThanOrEqual(a.cutoff);
+      expect(answers.map((a) => a.value)).toEqual([...answers.map((a) => a.value)].sort((x, y) => y - x));
+    }
+  });
+
+  it("names the answers behind a CRISIS reading", () => {
+    expect(levelEvidence(user({ imminent: 0.9, ideation: 0.95 })).answers.map((a) => a.signal)).toEqual(["imminent"]);
+    expect(levelEvidence(user({ plan: 0.4, means: 0.35 })).answers.map((a) => a.signal)).toEqual(["plan", "means"]);
+  });
+
+  it("names the follow-up, with the weak answers it confirmed as one combined figure", () => {
+    const { level, answers, combined } = levelEvidence(user({ ideation: 0.12, self_harm: 0.1, own_death_wish: 0.7 }));
+    expect(level).toBe("ELEVATED");
+    expect(answers.map((a) => a.signal)).toEqual(["own_death_wish"]);
+    expect(combined).toBeCloseTo(1 - 0.88 * 0.9);
+  });
 });
