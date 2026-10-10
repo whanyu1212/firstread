@@ -12,7 +12,7 @@ read as odds. The user check runs while the companion writes its draft, so it
 adds almost no wait.
 
 ```
-user message ──► user check ──► risk level (only goes up within a conversation)
+user message ──► user check ──► risk level (rises at once, comes down slowly)
                                      │
 companion LLM ──► draft ──► reply check ──► send | replace | escalate
 ```
@@ -20,6 +20,11 @@ companion LLM ──► draft ──► reply check ──► send | replace | e
 - **send**: the draft is fine and goes out unchanged.
 - **replace**: the draft is swapped for a safe reply that points to support.
 - **escalate**: crisis reply goes out immediately and a human reviewer is alerted.
+
+The risk level belongs to the conversation, not to one message (`risk.ts`). It rises as soon as
+a message warrants it, and one calm message never lowers it. ELEVATED settles to WATCH after
+several calm turns in a row (`settleAfter`), never to NONE. Only a person clears CRISIS
+(`clearCrisis()`), and only down to ELEVATED.
 
 The user check starts as soon as the message arrives (`guard.startTurn()`), so it runs
 while the companion writes its draft; `finish(draft)` adds the reply check. Both must answer
