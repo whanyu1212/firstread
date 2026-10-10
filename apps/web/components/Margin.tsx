@@ -30,8 +30,31 @@ const USER_SIGNAL_LABELS: Record<string, string> = {
   own_death_wish: "Their own wish to die",
   disguised_request: "Could be asking how, indirectly",
   counselor_concern: "A counsellor would check in",
+  latest_adds_risk: "Adds something new",
   asks_for_person: "Asking for a real person",
 };
+
+/**
+ * Jev's answers about the message, grouped by what FirstRead uses them for (policy.ts, risk.ts,
+ * turn.ts), so the details say why each question is asked.
+ */
+const USER_SIGNAL_GROUPS: { title: string; note: string; keys: string[] }[] = [
+  {
+    title: "Set the level",
+    note: "Each can raise the level on its own.",
+    keys: ["ideation", "self_harm", "method_seeking", "plan", "means", "intent", "preparation", "imminent", "harm_to_others"],
+  },
+  {
+    title: "Confirm weak signals",
+    note: "Only count when small self-harm signals add up.",
+    keys: ["own_death_wish", "disguised_request", "counselor_concern"],
+  },
+  {
+    title: "Context",
+    note: "Whether this message adds anything, which lets a level settle, and whether they asked for a person.",
+    keys: ["latest_adds_risk", "asks_for_person"],
+  },
+];
 
 /** Jev's questions about the companion's draft. */
 const REPLY_SIGNAL_LABELS: Record<string, string> = {
@@ -281,12 +304,15 @@ export function TurnNote({
   const handoff = reply && dataPart(reply, "handoff");
   const exercise = reply && dataPart(reply, "exercise");
   const user = audit.userSignals;
-  const userRows = user
-    ? Object.entries(user)
-        .filter(([k]) => k in USER_SIGNAL_LABELS)
-        .sort((a, b) => b[1] - a[1])
-        .map(([k, v]) => [USER_SIGNAL_LABELS[k]!, v] as [string, number])
+  const userGroups = user
+    ? USER_SIGNAL_GROUPS.map((g) => ({
+        ...g,
+        rows: g.keys
+          .map((k) => [USER_SIGNAL_LABELS[k]!, user[k as keyof typeof user]] as [string, number])
+          .sort((a, b) => b[1] - a[1]),
+      }))
     : [];
+  const answerCount = userGroups.reduce((n, g) => n + g.rows.length, 0);
   const replyRows = audit.replySignals
     ? Object.entries(audit.replySignals)
         .filter(([k]) => k in REPLY_SIGNAL_LABELS)
@@ -319,12 +345,20 @@ export function TurnNote({
       {user && (
         <details className="text-sm">
           <summary className="cursor-pointer text-accent">
-            Jev's {userRows.length + 1 + replyRows.length} answers, and the timing
+            Jev's {answerCount + replyRows.length} answers, and the timing
           </summary>
           <div className="mt-2 space-y-3">
             <JevStrip check={check} audit={audit} timing={timing} />
-            <Bars caption="This message" rows={[["Adds something new", user.latest_adds_risk], ...userRows]} />
-            {replyRows.length > 0 && <Bars caption="The companion's draft" rows={replyRows} />}
+            <p className="text-xs font-medium text-ink/75">About this message</p>
+            {userGroups.map((g) => (
+              <Bars key={g.title} caption={g.title} note={g.note} rows={g.rows} />
+            ))}
+            {replyRows.length > 0 && (
+              <>
+                <p className="text-xs font-medium text-ink/75">About the companion's draft</p>
+                <Bars caption="Decide the reply" note="Whether the draft goes out as written." rows={replyRows} />
+              </>
+            )}
             <Evidence score={risk.score} thresholds={risk.thresholds} />
           </div>
         </details>
@@ -488,10 +522,15 @@ function Segment({ span, pct, color }: { span: Span; pct: (sec: number) => strin
 }
 
 /** Jev's answers, the chance of yes, as bars. */
-function Bars({ rows, caption }: { rows: [string, number][]; caption?: string }) {
+function Bars({ rows, caption, note }: { rows: [string, number][]; caption?: string; note?: string }) {
   return (
     <figure>
-      {caption && <figcaption className="mb-1 text-xs text-muted">{caption}</figcaption>}
+      {caption && (
+        <figcaption className="mb-1 text-xs">
+          <span className="block font-medium">{caption}</span>
+          {note && <span className="block text-muted">{note}</span>}
+        </figcaption>
+      )}
       <ul className="space-y-1">
         {rows.map(([label, v]) => (
           <li key={label} className="grid grid-cols-[minmax(0,1fr)_4.5rem_2.25rem] items-center gap-2 text-xs">
