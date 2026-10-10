@@ -20,10 +20,12 @@ import { type RiskLevel, type UserSignals, atLeast } from "../src";
 import { NEGATIVE, POSITIVE, auc, percentile, score } from "./bhh-metrics";
 import type { BhhLabel } from "./fetch-bhh";
 
-type Row = { id: string; label: BhhLabel; ms: number; got: RiskLevel | null; signals: UserSignals | null };
+type Row = { id: string; label: BhhLabel; ms: number; got: RiskLevel | null; signals: UserSignals | null; error?: string };
 type Run = { name: string; file: string; rows: Map<string, Row> };
 
 const FAR_TARGETS = [0.03, 0.05, 0.1];
+/** The user check's latency budget: a call slower than this delays the reply. */
+const BUDGET_MS = 3000;
 const BOOTSTRAPS = 2000;
 
 const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
@@ -87,7 +89,11 @@ const isPos = (id: string) => POSITIVE.includes(runs[0]!.rows.get(id)!.label);
 const nPos = labelled.filter(isPos).length;
 
 console.log(`${shared.length} cases answered by every run; ${nPos} SI/self-harm vs ${labelled.length - nPos} no_crisis\n`);
-for (const r of runs) console.log(`  ${r.name.padEnd(5)} ${r.file.split("/").at(-1)}`);
+// Errors are counted over each whole file, not just the shared cases.
+for (const r of runs) {
+  const errors = [...r.rows.values()].filter((row) => row.error).length;
+  console.log(`  ${r.name.padEnd(9)} ${r.file.split("/").at(-1)}  errors ${errors}/${r.rows.size} (${((100 * errors) / r.rows.size).toFixed(1)}%)`);
+}
 
 const split = (run: Run, ids: string[]) => {
   const pos: number[] = [];
@@ -102,7 +108,7 @@ const resamples = Array.from({ length: BOOTSTRAPS }, () =>
 );
 
 console.log("\nThreshold swept per client (max self-harm probability):");
-console.log("client  AUC                    recall @ FAR<=3%   @ 5%        @ 10%       AUC vs jev");
+console.log("client    AUC                    recall @ FAR<=3%   @ 5%        @ 10%       AUC vs jev");
 const aucsByRun = new Map<string, number[]>();
 let jevAuc = 0;
 for (const run of runs) {
@@ -122,13 +128,13 @@ for (const run of runs) {
   const diff =
     run === runs[0] ? "" : `${(value - jevAuc).toFixed(3)} ${ci(aucs.map((a, i) => a - ref[i]!), (x) => x.toFixed(3))}`;
   console.log(
-    `${run.name.padEnd(7)} ${value.toFixed(3)} ${ci(aucs, (x) => x.toFixed(3)).padEnd(15)}  ${recalls.join("")}${diff}`,
+    `${run.name.padEnd(9)} ${value.toFixed(3)} ${ci(aucs, (x) => x.toFixed(3)).padEnd(15)}  ${recalls.join("")}${diff}`,
   );
 }
 console.log("(recall is at the lowest threshold whose actual false-alarm rate, in brackets, is under the target)");
 
 console.log("\nAs deployed (policy.ts thresholds, tuned on Jev):");
-console.log("client  SI/SH >=ELEVATED  SI/SH >=WATCH  no_crisis >=WATCH  no_crisis >=ELEVATED  violent >=WATCH  out-of-scope >=WATCH");
+console.log("client    SI/SH >=ELEVATED  SI/SH >=WATCH  no_crisis >=WATCH  no_crisis >=ELEVATED  violent >=WATCH  out-of-scope >=WATCH");
 for (const run of runs) {
   const rows = shared.map((id) => run.rows.get(id)!);
   const rate = (labels: BhhLabel[], min: RiskLevel) => {
@@ -137,7 +143,7 @@ for (const run of runs) {
   };
   const outOfScope: BhhLabel[] = ["anxiety_crisis", "substance_abuse_or_withdrawal", "risk_taking_behaviors"];
   console.log(
-    `${run.name.padEnd(7)} ${rate(POSITIVE, "ELEVATED").padStart(16)}  ${rate(POSITIVE, "WATCH").padStart(13)}  ` +
+    `${run.name.padEnd(9)} ${rate(POSITIVE, "ELEVATED").padStart(16)}  ${rate(POSITIVE, "WATCH").padStart(13)}  ` +
       `${rate([NEGATIVE], "WATCH").padStart(17)}  ${rate([NEGATIVE], "ELEVATED").padStart(20)}  ` +
       `${rate(["violent_thoughts"], "WATCH").padStart(15)}  ${rate(outOfScope, "WATCH").padStart(20)}`,
   );
@@ -145,7 +151,7 @@ for (const run of runs) {
 
 console.log("\nCalibration of the max self-harm probability (share of SI/self-harm cases per bin):");
 const BINS = [0, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0001];
-console.log(`client  ${BINS.slice(0, -1).map((b, i) => `${b}-${Math.min(1, BINS[i + 1]!)}`.padEnd(12)).join("")}Brier   saturated`);
+console.log(`client    ${BINS.slice(0, -1).map((b, i) => `${b}-${Math.min(1, BINS[i + 1]!)}`.padEnd(12)).join("")}Brier   saturated`);
 for (const run of runs) {
   const cells = BINS.slice(0, -1).map((lo, i) => {
     const ids = labelled.filter((id) => {
@@ -160,7 +166,7 @@ for (const run of runs) {
   // Share of all answers (every question, every case) that are effectively 0 or 1.
   const answers = shared.flatMap((id) => Object.values(run.rows.get(id)!.signals!));
   const saturated = answers.filter((p) => p <= 0.01 || p >= 0.99).length / answers.length;
-  console.log(`${run.name.padEnd(7)} ${cells.join("")}${brier.toFixed(3)}   ${pct(saturated)}`);
+  console.log(`${run.name.padEnd(9)} ${cells.join("")}${brier.toFixed(3)}   ${pct(saturated)}`);
 }
 console.log("(saturated: share of all question answers at <=0.01 or >=0.99; high means few usable thresholds)");
 
@@ -168,11 +174,12 @@ console.log("\nLatency per call (ms):");
 for (const run of runs) {
   const ms = shared.map((id) => run.rows.get(id)!.ms);
   const f = (p: number) => String(Math.round(percentile(ms, p))).padStart(6);
-  console.log(`${run.name.padEnd(7)} p50 ${f(0.5)}  p90 ${f(0.9)}  p99 ${f(0.99)}  max ${f(1)}`);
+  const over = ms.filter((m) => m > BUDGET_MS).length / ms.length;
+  console.log(`${run.name.padEnd(9)} p50 ${f(0.5)}  p90 ${f(0.9)}  p99 ${f(0.99)}  max ${f(1)}  over ${BUDGET_MS / 1000}s ${pct(over).padStart(4)}`);
 }
 
 console.log("\nSI/self-harm cases below ELEVATED as deployed:");
 for (const run of runs) {
   const missed = labelled.filter((id) => isPos(id) && !atLeast(run.rows.get(id)!.got!, "ELEVATED"));
-  console.log(`${run.name.padEnd(7)} ${missed.length ? missed.join(" ") : "none"}`);
+  console.log(`${run.name.padEnd(9)} ${missed.length ? missed.join(" ") : "none"}`);
 }

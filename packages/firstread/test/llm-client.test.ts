@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { probabilitiesFromLogprobs } from "../evals/llm-client";
+import { probabilitiesFromLogprobs, probabilitiesFromText } from "../evals/llm-client";
 
 const tok = (token: string, alts: [string, number][] = [[token, 1]]) => ({
   token,
@@ -35,5 +35,18 @@ describe("probabilitiesFromLogprobs", () => {
     expect(() => probabilitiesFromLogprobs([tok('{"plan":'), tok("true"), tok("}")], ["plan", "intent"])).toThrow(
       /intent/,
     );
+  });
+});
+
+describe("probabilitiesFromText", () => {
+  it("reads the first JSON object, fenced or not, and clamps to 0-1", () => {
+    const p = probabilitiesFromText('```json\n{"ideation": 0.9, "plan": "0.2", "intent": 1.4}\n```', ["ideation", "plan", "intent"]);
+    expect(p).toEqual({ ideation: 0.9, plan: 0.2, intent: 1 });
+  });
+
+  it("throws on a missing or non-numeric value instead of scoring NaN", () => {
+    expect(() => probabilitiesFromText('{"ideation": 0.9}', ["ideation", "plan"])).toThrow(/plan/);
+    expect(() => probabilitiesFromText('{"ideation": "high"}', ["ideation"])).toThrow(/ideation/);
+    expect(() => probabilitiesFromText("I can't answer that.", ["ideation"])).toThrow(/no JSON/);
   });
 });

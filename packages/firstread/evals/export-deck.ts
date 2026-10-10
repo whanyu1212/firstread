@@ -16,12 +16,19 @@ import type { BhhLabel } from "./fetch-bhh";
 type Row = { id: string; label: BhhLabel; ms: number; signals: UserSignals | null };
 
 const SPLIT = "test";
-const MODELS: Record<string, string> = { jev: "Jev", luna: "gpt-6-luna" };
+/** Every model the deck's charts show, in legend order, and how each one's probabilities are read. */
+const MODELS: Record<string, { name: string; scoring: string }> = {
+  jev: { name: "Jev", scoring: "its own probabilities" },
+  luna: { name: "gpt-6-luna", scoring: "true/false token probabilities, thinking off" },
+  gemini: { name: "gemini-3.8-flash", scoring: "stated probabilities, low thinking" },
+  deepseek: { name: "deepseek-v4.1-flash", scoring: "stated probabilities, low thinking" },
+  glm: { name: "glm-5.3-flash", scoring: "stated probabilities, low thinking" },
+};
 /** Points kept per ROC curve: enough for a smooth line, small enough to ship. */
 const ROC_POINTS = 120;
 const CALIBRATION_BINS = [0, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0001];
-const LATENCY_BIN_MS = 100;
-const LATENCY_MAX_MS = 2500;
+/** The user check's latency budget, as in compare-bhh.ts. */
+const BUDGET_MS = 3000;
 
 const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 
@@ -31,7 +38,8 @@ function latest(): { client: string; file: string }[] {
     const client = f.match(new RegExp(`^bhh-${SPLIT}-(\\w+?)-\\d{4}-`))?.[1];
     if (client && client in MODELS) out.set(client, f);
   }
-  return [...out].map(([client, file]) => ({ client, file }));
+  // In MODELS order, so the legend and colours don't depend on file names.
+  return Object.keys(MODELS).flatMap((client) => (out.has(client) ? [{ client, file: out.get(client)! }] : []));
 }
 
 const runs = latest().map(({ client, file }) => {
@@ -73,6 +81,8 @@ function roc(pos: number[], neg: number[]): [number, number][] {
 
 const out = {
   source: `BHH ${SPLIT} split; ${runs.map((r) => r.file).join(", ")}`,
+  /** Cases every model answered: the charts are computed on these only, so they stay paired. */
+  shared: shared.length,
   cases: { positive: labelled.filter(isPos).length, negative: labelled.filter((id) => !isPos(id)).length },
   runs: runs.map((run) => {
     const s = (id: string) => score(run.rows.get(id)!.signals!);
@@ -82,7 +92,9 @@ const out = {
     const answers = shared.flatMap((id) => Object.values(run.rows.get(id)!.signals!));
     return {
       id: run.client,
-      name: MODELS[run.client],
+      name: MODELS[run.client]!.name,
+      scoring: MODELS[run.client]!.scoring,
+      errors: [...run.rows.values()].filter((r) => !r.signals).length,
       auc: round(auc(pos, neg), 3),
       roc: roc(pos, neg),
       /** Share of all answers at <=0.01 or >=0.99: high means few usable thresholds. */
@@ -98,17 +110,13 @@ const out = {
         };
       }),
       latency: {
+        p10: Math.round(percentile(ms, 0.1)),
         p50: Math.round(percentile(ms, 0.5)),
         p90: Math.round(percentile(ms, 0.9)),
         p99: Math.round(percentile(ms, 0.99)),
-        binMs: LATENCY_BIN_MS,
-        /** Calls per bin from 0; the last bin holds everything slower. */
-        histogram: Array.from({ length: LATENCY_MAX_MS / LATENCY_BIN_MS }, (_, i) =>
-          ms.filter((m) => {
-            const bin = Math.min(Math.floor(m / LATENCY_BIN_MS), LATENCY_MAX_MS / LATENCY_BIN_MS - 1);
-            return bin === i;
-          }).length,
-        ),
+        budgetMs: BUDGET_MS,
+        /** Share of calls slower than the budget. */
+        overBudget: round(ms.filter((m) => m > BUDGET_MS).length / ms.length, 3),
       },
     };
   }),
