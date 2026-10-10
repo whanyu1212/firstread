@@ -123,7 +123,7 @@ export function DemoClient() {
                       before={i === 0 ? null : levelAfter(rows[i - 1])}
                       startedAt={sentAt.current.get(e.user.id)}
                       live={pending && chat.busy}
-                      speed={chat.replay?.speed ?? 1}
+                      elapsed={chat.replay ? () => chat.replay!.elapsedSince(i) : undefined}
                     />
                   </div>
                 </article>

@@ -177,6 +177,15 @@ export function useCompanionChat() {
       speed: replay.speed,
       finished: replayFinished,
       setSpeed: (s: 1 | 2) => setReplay((r) => (r ? { ...r, speed: s } : r)),
+      /**
+       * Recorded seconds since a turn's message appeared, read from the replay's own clock, so a
+       * speed change only speeds up what comes after it.
+       */
+      elapsedSince: (turn: number) => {
+        const start = scheduleOf(replay.rec).find((st) => st.turn === turn && st.phase === "user")?.at ?? 0;
+        const running = !replay.stopped ? (performance.now() - clock.current.last) * replay.speed : 0;
+        return Math.max(0, clock.current.virtual + running - start) / 1000;
+      },
       skip: () => setReplay((r) => (r ? { ...r, shown: finalStep(r.rec), stopped: true } : r)),
     },
   };
