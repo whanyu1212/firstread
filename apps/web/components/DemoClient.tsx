@@ -4,7 +4,7 @@ import type { RiskLevel } from "firstread";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "@/lib/chat";
-import { SCENARIOS } from "@/lib/scenarios";
+import { GROUPS, SCENARIOS } from "@/lib/scenarios";
 import { Composer, CompanionReply, dataPart, errorMessage, messageText, UserBubble } from "./CompanionChat";
 import { DemoNotice } from "./DemoNotice";
 import { Logo } from "./Logo";
@@ -83,13 +83,18 @@ export function DemoClient() {
             <div className="col-span-2 px-4 pt-3 pb-2 lg:col-span-1 lg:col-start-3 lg:px-5 lg:py-4">
               <NowSummary risk={latestRisk} waiting />
             </div>
-            <p className="col-span-2 hidden self-center px-4 pb-3 text-sm text-ink/75 sm:block lg:col-span-1 lg:col-start-1 lg:row-start-1 lg:max-w-[60ch] lg:px-6 lg:py-4">
-              {chat.jevDown
-                ? "Jev is switched off for this conversation. Every FirstRead check fails, so watch it fail closed: no reply goes out unchecked."
-                : chat.playing
-                  ? `Playing “${chat.playing.title}”. ${chat.playing.shows}`
-                  : "Each reply appears only once FirstRead has checked it."}
-            </p>
+            <div className="col-span-2 self-center px-4 pb-3 text-sm text-ink/75 lg:col-span-1 lg:col-start-1 lg:row-start-1 lg:max-w-[60ch] lg:px-6 lg:py-4">
+              <p className="hidden sm:block">
+                {chat.replay
+                  ? `“${chat.replay.scenario.title}”, recorded ${recordedOn(chat.replay.recordedAt)} through the live pipeline: real Jev, the real companion, real timings. ${chat.replay.scenario.shows}`
+                  : chat.jevDown
+                    ? "Jev is switched off for this conversation. Every FirstRead check fails, so watch it fail closed: no reply goes out unchecked."
+                    : chat.playing
+                      ? `Playing “${chat.playing.title}” live. ${chat.playing.shows}`
+                      : "Each reply appears only once FirstRead has checked it."}
+              </p>
+              {chat.replay && <ReplayControls chat={chat} />}
+            </div>
           </header>
         )}
 
@@ -118,6 +123,7 @@ export function DemoClient() {
                       before={i === 0 ? null : levelAfter(rows[i - 1])}
                       startedAt={sentAt.current.get(e.user.id)}
                       live={pending && chat.busy}
+                      speed={chat.replay?.speed ?? 1}
                     />
                   </div>
                 </article>
@@ -154,8 +160,8 @@ function Controls({ chat, keyOpen, onToggleKey }: { chat: CompanionChatState; ke
       </label>
       <select
         id="scenario"
-        className="h-9 rounded-md border border-line bg-canvas pr-8 pl-3 hover:bg-raised"
-        value={chat.playing?.id ?? ""}
+        className="h-9 w-48 rounded-md border border-line bg-canvas pr-8 pl-3 hover:bg-raised sm:w-52"
+        value={chat.playing?.id ?? chat.replay?.scenario.id ?? ""}
         onChange={(e) => {
           const s = SCENARIOS.find((x) => x.id === e.target.value);
           if (s) chat.playScenario(s);
@@ -163,10 +169,14 @@ function Controls({ chat, keyOpen, onToggleKey }: { chat: CompanionChatState; ke
         disabled={chat.busy && !chat.playing}
       >
         <option value="">Play a scenario</option>
-        {SCENARIOS.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.title}
-          </option>
+        {GROUPS.map((g) => (
+          <optgroup key={g} label={g}>
+            {SCENARIOS.filter((s) => s.group === g).map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.title}
+              </option>
+            ))}
+          </optgroup>
         ))}
       </select>
       {chat.playing && (
@@ -231,20 +241,30 @@ function EmptyState({ chat, onAddKey }: { chat: CompanionChatState; onAddKey: ()
     <div className={ROW}>
       <div className="col-span-2 p-5 lg:col-span-1 lg:p-6">
         <p className="text-xl font-semibold tracking-tight">Play a scripted conversation, or write your own below.</p>
-        <ul className="mt-5 grid gap-2 sm:grid-cols-2">
-          {SCENARIOS.map((s) => (
-            <li key={s.id}>
-              <button
-                type="button"
-                onClick={() => chat.playScenario(s)}
-                className="h-full w-full rounded-lg border border-line bg-margin px-4 py-3 text-left transition-colors hover:border-muted hover:bg-raised motion-reduce:transition-none"
-              >
-                <span className="block font-medium">{s.title}</span>
-                <span className="mt-0.5 block text-sm text-muted">{s.shows}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <p className="mt-1 text-sm text-muted">
+          Each one replays a run recorded through the live pipeline, so it needs no key.
+        </p>
+        {GROUPS.map((g) => (
+          <section key={g} className="mt-5" aria-labelledby={`group-${g}`}>
+            <h2 id={`group-${g}`} className="text-sm font-medium text-ink/75">
+              {g}
+            </h2>
+            <ul className="mt-2 grid gap-2 sm:grid-cols-2">
+              {SCENARIOS.filter((s) => s.group === g).map((s) => (
+                <li key={s.id}>
+                  <button
+                    type="button"
+                    onClick={() => chat.playScenario(s)}
+                    className="h-full w-full rounded-lg border border-line bg-margin px-4 py-3 text-left transition-colors hover:border-muted hover:bg-raised motion-reduce:transition-none"
+                  >
+                    <span className="block font-medium">{s.title}</span>
+                    <span className="mt-0.5 block text-sm text-muted">{s.shows}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
         {chat.jevDown && (
           <p className="mt-5 text-sm text-muted">
             Jev is switched off. Every FirstRead check will fail, so you can watch it fail closed: no reply goes out
@@ -253,7 +273,7 @@ function EmptyState({ chat, onAddKey }: { chat: CompanionChatState; onAddKey: ()
         )}
         {!chat.key && (
           <p className="mt-5 text-sm text-muted">
-            Scenarios and your own messages run live, with your OpenAI key.{" "}
+            Your own messages run live, with your OpenAI key.{" "}
             <button type="button" onClick={onAddKey} className="text-accent hover:underline">
               Add your key
             </button>
@@ -263,6 +283,43 @@ function EmptyState({ chat, onAddKey }: { chat: CompanionChatState; onAddKey: ()
       <div className="hidden lg:col-start-3 lg:block lg:p-6">
         <NowSummary risk={undefined} />
       </div>
+    </div>
+  );
+}
+
+const recordedOn = (iso: string) => new Date(iso).toLocaleDateString("en-SG", { day: "numeric", month: "long" });
+
+/** A replay's controls: speed, skip to the end, and running the same scenario live with a key. */
+function ReplayControls({ chat }: { chat: CompanionChatState }) {
+  const replay = chat.replay!;
+  const button = "h-8 rounded-md border border-line bg-canvas px-3 text-ink hover:bg-raised disabled:opacity-40";
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      <span className="text-muted sm:hidden">Recorded {recordedOn(replay.recordedAt)}</span>
+      {replay.finished ? (
+        <button type="button" onClick={() => chat.playScenario(replay.scenario)} className={button}>
+          Play again
+        </button>
+      ) : (
+        <>
+          <button
+            type="button"
+            aria-pressed={replay.speed === 2}
+            onClick={() => replay.setSpeed(replay.speed === 2 ? 1 : 2)}
+            className={`${button} ${replay.speed === 2 ? "border-ink/40 bg-raised" : ""}`}
+          >
+            2× speed
+          </button>
+          <button type="button" onClick={replay.skip} className={button}>
+            Skip to end
+          </button>
+        </>
+      )}
+      {chat.key && (
+        <button type="button" onClick={() => chat.playLive(replay.scenario)} className={button}>
+          Run it live
+        </button>
+      )}
     </div>
   );
 }
