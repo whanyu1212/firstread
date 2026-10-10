@@ -109,8 +109,8 @@ export function Latency({ at: from }: { at: number }) {
         animate={{ opacity: play ? 1 : 0 }}
         transition={play ? t(DURATION.base, DURATION.slow) : t(0)}
       >
-        Seconds per check on the BHH test messages: the dot is the median, the bar runs from the
-        fastest 10% to the slowest 10%.{" "}
+        Seconds per check on the BHH test messages: the dot is the median, the bar the middle 80% of
+        checks (10th to 90th percentile).{" "}
         <span className="text-muted">
           FirstRead waits {BUDGET_MS / 1000}s for the user check. {overBudget}
         </span>

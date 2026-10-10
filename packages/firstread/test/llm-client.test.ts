@@ -48,5 +48,10 @@ describe("probabilitiesFromText", () => {
     expect(() => probabilitiesFromText('{"ideation": 0.9}', ["ideation", "plan"])).toThrow(/plan/);
     expect(() => probabilitiesFromText('{"ideation": "high"}', ["ideation"])).toThrow(/ideation/);
     expect(() => probabilitiesFromText("I can't answer that.", ["ideation"])).toThrow(/no JSON/);
+    expect(() => probabilitiesFromText('{"ideation": ""}', ["ideation"])).toThrow(/ideation/);
+  });
+
+  it("reads the first object when text with braces follows it", () => {
+    expect(probabilitiesFromText('{"ideation": 0.3} (scale {0..1})', ["ideation"])).toEqual({ ideation: 0.3 });
   });
 });

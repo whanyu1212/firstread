@@ -164,17 +164,18 @@ export function probabilitiesFromLogprobs(tokens: TokenLogprob[], keys: string[]
 
 /**
  * The probability per key from a verbalized answer. The JSON may come fenced or with text around
- * it (GLM: the gateway doesn't pass response_format to zai), so the first {...} is read. A missing
- * or non-numeric value throws: as NaN it would silently score as 0 in every comparison.
+ * it (GLM: the gateway doesn't pass response_format to zai), so the first flat {...} is read. A
+ * missing, empty or non-numeric value throws: as NaN or "" it would silently score as 0.
  */
 export function probabilitiesFromText(content: string, keys: string[]): Record<string, number> {
-  const json = content.match(/\{[\s\S]*\}/)?.[0];
+  const json = content.match(/\{[^{}]*\}/)?.[0];
   if (!json) throw new Error(`no JSON object in answer: ${content.slice(0, 80)}`);
   const answers = JSON.parse(json) as Record<string, unknown>;
   const out: Record<string, number> = {};
   const missing: string[] = [];
   for (const key of keys) {
-    const value = typeof answers[key] === "string" ? Number(answers[key]) : answers[key];
+    const raw = answers[key];
+    const value = typeof raw === "string" && /^\s*\d*\.?\d+\s*$/.test(raw) ? Number(raw) : raw;
     if (typeof value === "number" && Number.isFinite(value)) out[key] = Math.min(1, Math.max(0, value));
     else missing.push(key);
   }
@@ -190,9 +191,12 @@ export function createLlmClient({
   reasoningEffort,
   fetch: doFetch = fetch,
   url = OPENAI_URL,
-  apiKey = process.env.OPENAI_API_KEY,
+  apiKey: givenKey,
 }: LlmOptions): JevClient {
-  if (!apiKey) throw new Error(`Set ${url === GATEWAY_URL ? "AI_GATEWAY_API_KEY" : "OPENAI_API_KEY"} in .env for the LLM baselines`);
+  // Each endpoint gets its own key, so the OpenAI key is never sent to the gateway.
+  const keyName = url === GATEWAY_URL ? "AI_GATEWAY_API_KEY" : "OPENAI_API_KEY";
+  const apiKey = givenKey ?? process.env[keyName];
+  if (!apiKey) throw new Error(`Set ${keyName} in .env for the LLM baselines`);
   if (mode === "logprobs" && reasoningEffort !== "none") throw new Error("logprobs need reasoningEffort none");
 
   return {
@@ -246,7 +250,7 @@ export function createLlmClient({
 
 /** The flash models, through AI Gateway. reasoning_effort "low" keeps thinking on for all three. */
 const gateway = (model: string, fetch: Fetch) =>
-  createLlmClient({ model, mode: "verbalized", reasoningEffort: "low", fetch, url: GATEWAY_URL, apiKey: process.env.AI_GATEWAY_API_KEY });
+  createLlmClient({ model, mode: "verbalized", reasoningEffort: "low", fetch, url: GATEWAY_URL });
 
 /** The client an eval asks for, with every HTTP attempt paced and metered. */
 export function evalClient(name: ClientName, pacer: Pacer, usage: Usage): JevClient {
