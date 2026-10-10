@@ -2,7 +2,7 @@
 
 import type { RiskLevel } from "firstread";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { type Recording, replyMessage, userMessage } from "@/lib/replay";
+import { type Recording, type Shown, finalStep, replaySchedule, replyMessage, userMessage } from "@/lib/replay";
 import recording from "@/slides/data/replay-crisis.json";
 import { CompanionReply, UserBubble, messageText } from "../CompanionChat";
 import { MarginRule, NowSummary, TurnNote } from "../Margin";
@@ -14,12 +14,9 @@ import { useReduced } from "./motion";
  * check answered, then the reply when it went out.
  */
 const rec = recording as Recording;
-/** Time to read each reply before the next message arrives. */
-const PAUSE_MS = 1800;
+const schedule = replaySchedule(rec);
 // Narrower notes on a phone; the margin behind them matches: notes plus half the rule column.
 const ROW = "grid grid-cols-[minmax(0,1fr)_2rem_9rem] sm:grid-cols-[minmax(0,1fr)_2.5rem_17rem]";
-
-type Shown = { turn: number; phase: "user" | "checked" | "done" };
 
 export function Replay() {
   const reduced = useReduced();
@@ -29,16 +26,8 @@ export function Replay() {
   const play = useCallback(() => {
     timers.current.forEach(clearTimeout);
     timers.current = [];
-    if (reduced) return setShown({ turn: rec.turns.length - 1, phase: "done" });
-    let at = 400;
-    rec.turns.forEach((t, i) => {
-      const { checkMs, totalMs } = t.data.timing!;
-      const schedule = (ms: number, s: Shown) => timers.current.push(setTimeout(() => setShown(s), ms));
-      schedule(at, { turn: i, phase: "user" });
-      if (checkMs !== null && checkMs < totalMs) schedule(at + checkMs, { turn: i, phase: "checked" });
-      schedule(at + Math.max(totalMs, 250), { turn: i, phase: "done" });
-      at += Math.max(totalMs, 250) + PAUSE_MS;
-    });
+    if (reduced) return setShown(finalStep(rec));
+    for (const { at, ...s } of schedule) timers.current.push(setTimeout(() => setShown(s), at));
   }, [reduced]);
 
   useEffect(() => {

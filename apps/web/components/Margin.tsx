@@ -166,6 +166,7 @@ export function TurnNote({
   compact = false,
   startedAt,
   live = false,
+  elapsed,
 }: {
   reply: ChatMessage | undefined;
   before: RiskLevel | null;
@@ -174,6 +175,8 @@ export function TurnNote({
   startedAt?: number;
   /** The turn is still in flight (not abandoned after an error). */
   live?: boolean;
+  /** Seconds since the message, for a replay, whose clock isn't the wall clock. */
+  elapsed?: () => number;
 }) {
   const check = reply && dataPart(reply, "check");
   const audit = reply && dataPart(reply, "audit");
@@ -199,7 +202,7 @@ export function TurnNote({
         <p className="font-semibold tracking-tight">
           {check ? (check.ok ? `Read as ${LEVEL_LABEL[check.level]}` : "Couldn't read this message") : "Reading your message…"}
         </p>
-        <JevStrip check={check} startedAt={startedAt} live={live} />
+        <JevStrip check={check} startedAt={startedAt} live={live} elapsed={elapsed} />
       </div>
     );
   }
@@ -295,12 +298,14 @@ export function JevStrip({
   timing,
   startedAt,
   live = false,
+  elapsed: elapsedOf,
 }: {
   check: ChatData["check"] | undefined;
   audit?: ChatData["audit"];
   timing?: ChatData["timing"];
   startedAt?: number;
   live?: boolean;
+  elapsed?: () => number;
 }) {
   const reduce = useReducedMotion();
   const [now, setNow] = useState(() => Date.now());
@@ -363,7 +368,7 @@ export function JevStrip({
     companion = { from: 0, to: axis, running: true };
     jev = read !== null ? [{ from: 0, to: read, failed: readFailed }] : [];
   } else {
-    const elapsed = startedAt ? Math.max(0, (now - startedAt) / 1000) : 0;
+    const elapsed = elapsedOf ? elapsedOf() : startedAt ? Math.max(0, (now - startedAt) / 1000) : 0;
     // Headroom past the elapsed time, so the companion's lane visibly advances and Jev's read stays
     // put; most turns take 3–6s. The scale snaps to the real total once the turn is done.
     axis = Math.max(6, elapsed + 1);
