@@ -3,7 +3,7 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useReducedMotion } from "motion/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type ChatMessage, JEV_DOWN_HEADER, OPENAI_KEY_HEADER } from "@/lib/chat";
 import { RECORDINGS } from "@/lib/recordings";
 import { type Recording, type Shown, finalStep, messagesAt, replaySchedule } from "@/lib/replay";
@@ -14,6 +14,8 @@ import { useOpenAIKey } from "./OpenAIKeyField";
 const SCENARIO_PAUSE_MS = 1500;
 /** How often a replay checks whether its next moment has come. */
 const REPLAY_TICK_MS = 50;
+/** A replay's first message shows at once, so the click visibly starts it. */
+const scheduleOf = (rec: Recording) => replaySchedule(rec, { startMs: 0 });
 
 /** A recording being replayed: no network, no key. `play` keeps each play's message ids apart. */
 type Replay = { scenario: Scenario; rec: Recording; play: string; shown: Shown | null; speed: 1 | 2; stopped: boolean };
@@ -91,7 +93,7 @@ export function useCompanionChat() {
       clock.current.last = now;
       setReplay((r) => {
         if (!r || r.play !== replayKey) return r;
-        const steps = replaySchedule(r.rec);
+        const steps = scheduleOf(r.rec);
         const reached = steps.filter((st) => st.at <= clock.current.virtual).at(-1);
         const done = steps.at(-1)!.at <= clock.current.virtual;
         const shown = reached ? { turn: reached.turn, phase: reached.phase } : null;
@@ -107,6 +109,13 @@ export function useCompanionChat() {
   }, [replay?.play]);
 
   const replayFinished = replay !== null && (replay.stopped || (replay.shown?.turn === replay.rec.turns.length - 1 && replay.shown.phase === "done"));
+
+  // The same array until the replay moves on, so effects keyed on messages (auto-scroll) don't
+  // fire on unrelated re-renders.
+  const replayMessages = useMemo(
+    () => (replay?.shown ? messagesAt(replay.rec, replay.shown, replay.play) : []),
+    [replay?.rec, replay?.shown, replay?.play],
+  );
 
   const send = chat.sendMessage;
   // Typing over a replay starts a fresh conversation, since the server has none of the replayed
@@ -143,7 +152,7 @@ export function useCompanionChat() {
 
   return {
     ...chat,
-    messages: replay ? (replay.shown ? messagesAt(replay.rec, replay.shown, replay.play) : []) : chat.messages,
+    messages: replay ? replayMessages : chat.messages,
     sendMessage,
     busy: replay ? !replayFinished : busy,
     key,
@@ -157,7 +166,9 @@ export function useCompanionChat() {
     playing: scenario?.scenario ?? (replay && !replayFinished ? replay.scenario : null),
     stopScenario: () => {
       setScenario(null);
-      setReplay((r) => (r ? { ...r, stopped: true } : r));
+      // Stopping a replay lets the turn on screen finish, as a live stop does; before its first
+      // message there's nothing to keep.
+      setReplay((r) => (!r || !r.shown ? null : { ...r, shown: { turn: r.shown.turn, phase: "done" }, stopped: true }));
     },
     /** The replay on screen, if any: what it is, its speed, and the controls for it. */
     replay: replay && {

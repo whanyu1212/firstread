@@ -86,7 +86,7 @@ export function DemoClient() {
             <div className="col-span-2 self-center px-4 pb-3 text-sm text-ink/75 lg:col-span-1 lg:col-start-1 lg:row-start-1 lg:max-w-[60ch] lg:px-6 lg:py-4">
               <p className="hidden sm:block">
                 {chat.replay
-                  ? `“${chat.replay.scenario.title}”, recorded ${recordedOn(chat.replay.recordedAt)} through the live pipeline: real Jev, the real companion, real timings. ${chat.replay.scenario.shows}`
+                  ? `“${chat.replay.scenario.title}”, recorded ${recordedOn(chat.replay.recordedAt)} through the live pipeline: real Jev, the real companion, real timings. ${chat.replay.scenario.shows}${chat.jevDown ? " Jev was up when this was recorded; “Simulate Jev being down” applies to live messages." : ""}`
                   : chat.jevDown
                     ? "Jev is switched off for this conversation. Every FirstRead check fails, so watch it fail closed: no reply goes out unchecked."
                     : chat.playing
@@ -267,8 +267,8 @@ function EmptyState({ chat, onAddKey }: { chat: CompanionChatState; onAddKey: ()
         ))}
         {chat.jevDown && (
           <p className="mt-5 text-sm text-muted">
-            Jev is switched off. Every FirstRead check will fail, so you can watch it fail closed: no reply goes out
-            unchecked.
+            Jev is switched off for live messages. Every FirstRead check will fail, so you can watch it fail closed: no
+            reply goes out unchecked. The scenarios are recordings, made with Jev up.
           </p>
         )}
         {!chat.key && (

@@ -8,9 +8,9 @@
  *     pnpm --filter web record:replay all                    # every scenario
  *     pnpm --filter web record:replay all --out /tmp/rec     # somewhere to look at first
  *
- * A scenario taken from the multi-turn eval set (`evalId`) is scored with the same labels as
- * `pnpm eval:conversations`. A run that goes over a ceiling, misses its target or doesn't settle
- * in time isn't written unless you pass --force; record it again or fix the scenario. Writes
+ * A scenario taken from the multi-turn eval set (`evalId`) is scored with the same labels and
+ * failures as `pnpm eval:conversations`. A run that goes over a ceiling, misses or is late to its
+ * target, stays flagged after recovery or doesn't settle in time isn't written unless you pass --force; record it again or fix the scenario. Writes
  * slides/data/replay-<scenario>.json. Spends Jev and OpenAI credits. DEMO_URL sets the server.
  */
 
@@ -62,12 +62,16 @@ function labelProblems(scenario: Scenario, levels: RiskLevel[]): string[] {
   const c = conversations.find((x) => x.id === scenario.evalId);
   if (!c) return [`eval conversation ${scenario.evalId} not found`];
   if (c.exchanges.length !== levels.length) return [`${levels.length} turns, but ${c.id} has ${c.exchanges.length} exchanges`];
-  const score = scoreConversation(c, levels);
   const problems: string[] = [];
+  const drifted = scenario.messages.flatMap((m, i) => (m === c.exchanges[i]!.user ? [] : [i + 1]));
+  if (drifted.length) problems.push(`messages differ from ${c.id} at ${drifted.join(", ")}, so its labels may not apply`);
+  const score = scoreConversation(c, levels);
   if (score.overCeiling.length) {
     problems.push(`over the ceiling at ${score.overCeiling.map((n) => `${n} (${levels[n - 1]} > ${ceilingAt(c, n)})`).join(", ")}`);
   }
   if (score.missed) problems.push(`never reached ${c.target}`);
+  if (score.delay !== null && score.delay > 0) problems.push(`reached ${c.target} ${score.delay} exchange(s) after detect_by`);
+  if (score.flaggedAfterRecovery) problems.push(`ELEVATED or above on ${score.flaggedAfterRecovery} turn(s) after recovery_from`);
   if (score.settled === "never" || score.settled === "late") problems.push(`settled ${score.settled}`);
   return problems;
 }
@@ -85,7 +89,10 @@ for (const id of ids) {
     turns.push(t);
     console.log(`  ${(t.data.risk?.level ?? "?").padEnd(8)} ${(t.data.audit?.action ?? "?").padEnd(8)} ${text}`);
   }
-  const problems = labelProblems(scenario, turns.map((t) => t.data.risk?.level ?? "NONE"));
+  const unread = turns.flatMap((t, i) => (t.data.risk ? [] : [i + 1]));
+  const problems = unread.length
+    ? [`no risk level on turn ${unread.join(", ")}`]
+    : labelProblems(scenario, turns.map((t) => t.data.risk!.level));
   for (const p of problems) console.log(`  ✗ ${p}`);
   if (problems.length && !args.force) {
     console.log("  not written (pass --force to keep it anyway)");
