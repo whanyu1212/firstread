@@ -1,24 +1,17 @@
 import { Glass } from "@/components/deck/Glass";
 import { Harness } from "@/components/deck/Harness";
-import { Point, Points, Split } from "@/components/deck/steps";
+import { Wide } from "@/components/deck/steps";
 
-<Split
+<Wide
   visual={
     <Glass at={1}>
-      <Harness />
+      <Harness at={1} draftAt={2} outcomesAt={3} deadlineAt={4} />
     </Glass>
   }
 >
 
 # Jev in the harness
 
-Up to two Jev calls per turn, placed so the person barely waits for them.
+Up to two Jev calls per turn, placed so the person barely waits for them, and nothing reaches them unchecked.
 
-<Points>
-  <Point at={1} title="The message is read while the companion writes,">so the first check usually adds no wait.</Point>
-  <Point at={2} title="The draft is read before it's shown.">Nothing reaches the person unchecked.</Point>
-  <Point at={3} title="Then one of three replies goes out:">the draft, a safe reply, or the crisis reply.</Point>
-  <Point at={4} title="No answer in time? Fail closed.">Try "Simulate Jev being down" with a live message in the demo.</Point>
-</Points>
-
-</Split>
+</Wide>
