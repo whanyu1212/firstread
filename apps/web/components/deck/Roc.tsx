@@ -40,6 +40,8 @@ function visible(roc: number[][]): [number, number][] {
 
 const recallAt = (roc: number[][], far: number) => Math.max(...roc.filter(([fx]) => fx! <= far).map(([, ry]) => ry!));
 const best = [...others].sort((a, b) => b.run.auc - a.run.auc)[0]!;
+// Share of answers at 0 or 1, lowest first: the fewer, the more thresholds there are to choose from.
+const saturation = others.map((m) => m.run.saturated).sort((a, b) => a - b);
 // Jev is drawn last so its curve sits on top where they cross.
 const drawOrder = [...others, jev];
 
@@ -152,10 +154,12 @@ export function Roc({ at }: { at: number }) {
         </tbody>
       </table>
       <motion.figcaption className="mt-2 text-base" {...show(DURATION.slow + 0.4)}>
-        Luna is read from its true/false token probabilities, the flash models state a probability at
-        low thinking.{" "}
+        Jev gives an answer in between far more often: {pct(jev.run.saturated)} of its answers are 0 or 1,
+        against {pct(saturation[0]!)}–{pct(saturation.at(-1)!)} for the others.{" "}
         <span className="text-muted">
-          BHH test split: {bhh.cases.positive.toLocaleString("en-US")} self-harm and {bhh.cases.negative.toLocaleString("en-US")} no-risk messages, all answered by every model.
+          Luna is read from its true/false token probabilities; the flash models state a probability, at
+          low thinking. BHH test split: {bhh.cases.positive.toLocaleString("en-US")} self-harm and{" "}
+          {bhh.cases.negative.toLocaleString("en-US")} no-risk messages, all answered by every model.
         </span>
       </motion.figcaption>
     </figure>
