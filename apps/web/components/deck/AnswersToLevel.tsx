@@ -4,13 +4,15 @@ import type { UserSignals } from "firstread";
 import { DEFAULT_WINDOW } from "firstread/live";
 import { DEFAULT_RISK_CONFIG } from "firstread/risk";
 import { motion } from "motion/react";
+import type { ReactNode } from "react";
 import type { ChatData } from "@/lib/chat";
 import { LADDER_TURN, type LadderRule, ladder } from "@/lib/ladder";
 import { pct } from "@/lib/margin";
 import { LEVEL_COLOR, LEVEL_LABEL } from "../levels";
 import { USER_SIGNAL_GROUPS, USER_SIGNAL_LABELS } from "../signals";
 import { DURATION, useTransition } from "./motion";
-import { Build, useStep } from "./steps";
+import { Glass } from "./Glass";
+import { Stack, useStep } from "./steps";
 
 /**
  * Act 2's first slide: how one message becomes a level. Step 1, Jev's answers; step 2, the rules
@@ -27,20 +29,29 @@ const C = DEFAULT_RISK_CONFIG;
 
 export function AnswersToLevel() {
   return (
-    <figure className="space-y-5">
-      <p className="ml-auto w-fit max-w-[90%] rounded-xl bg-user px-4 py-2.5 text-lg">{turn.user}</p>
-      <div className="grid [&>*]:col-start-1 [&>*]:row-start-1">
-        <Build at={1} until={2}>
-          <Answers />
-        </Build>
-        <Build at={2} until={3}>
-          <Ladder />
-        </Build>
-        <Build at={3}>
-          <Conversation />
-        </Build>
-      </div>
-    </figure>
+    <Stack align="start">
+      <Panel at={1} until={2}>
+        <Answers />
+      </Panel>
+      <Panel at={2} until={3}>
+        <Ladder />
+      </Panel>
+      <Panel at={3}>
+        <Conversation />
+      </Panel>
+    </Stack>
+  );
+}
+
+/** One step's panel: the message on top, in the same place on every step, then what this step adds. */
+function Panel({ at, until, children }: { at: number; until?: number; children: ReactNode }) {
+  return (
+    <Glass at={at} until={until}>
+      <figure className="space-y-5">
+        <p className="ml-auto w-fit max-w-[90%] rounded-xl bg-user px-4 py-2.5 text-lg">{turn.user}</p>
+        {children}
+      </figure>
+    </Glass>
   );
 }
 

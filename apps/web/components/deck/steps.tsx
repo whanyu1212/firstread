@@ -14,7 +14,7 @@ export const useStep = () => useContext(StepContext);
 
 /**
  * Shown from step `at` (until step `until`, if given), rising into place. It keeps its space in
- * the layout while hidden, so nothing jumps; stack two in one grid cell to swap them.
+ * the layout while hidden, so nothing jumps. To swap whole panels, use a Stack of Glass instead.
  */
 export function Build({
   at,
@@ -42,6 +42,20 @@ export function Build({
     >
       {children}
     </motion.div>
+  );
+}
+
+/**
+ * Panels that replace one another in one place, one per build step (`<Glass at until>`): stacked in
+ * one grid cell, so the column keeps the tallest panel's height and the text beside it never moves,
+ * while each panel fits its own content. `start` keeps what the panels share (a message on top) in
+ * the same place; charts sit centred.
+ */
+export function Stack({ align = "center", children }: { align?: "center" | "start"; children: ReactNode }) {
+  return (
+    <div className={`grid [&>*]:col-start-1 [&>*]:row-start-1 ${align === "start" ? "items-start" : "items-center"}`}>
+      {children}
+    </div>
   );
 }
 

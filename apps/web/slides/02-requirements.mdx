@@ -1,20 +1,18 @@
 import { Calibration } from "@/components/deck/Calibration";
 import { Glass } from "@/components/deck/Glass";
-import { Build, Point, Points, Split } from "@/components/deck/steps";
+import { Point, Points, Split, Stack } from "@/components/deck/steps";
 import { TurnTimeline } from "@/components/deck/TurnTimeline";
 
 <Split
   visual={
-    <Glass at={1}>
-      <div className="grid [&>*]:col-start-1 [&>*]:row-start-1">
-        <Build at={1} until={3} className="self-center">
-          <TurnTimeline at={1} />
-        </Build>
-        <Build at={3} className="self-center">
-          <Calibration at={3} />
-        </Build>
-      </div>
-    </Glass>
+    <Stack>
+      <Glass at={1} until={3}>
+        <TurnTimeline at={1} />
+      </Glass>
+      <Glass at={3}>
+        <Calibration at={3} />
+      </Glass>
+    </Stack>
   }
 >
 
