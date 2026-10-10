@@ -8,3 +8,6 @@ logs/
 **/evals/data/
 .claude/settings.local.json
 next-env.d.ts
+# Vercel CLI: the linked project, and the env it pulls
+.vercel
+.env*.local
