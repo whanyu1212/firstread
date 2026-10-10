@@ -28,7 +28,7 @@ const USER_SIGNAL_LABELS: Record<string, string> = {
   imminent: "May act soon",
   harm_to_others: "Wants to harm someone else",
   own_death_wish: "Their own wish to die",
-  disguised_request: "A disguised request for methods",
+  disguised_request: "Could be asking how, indirectly",
   counselor_concern: "A counsellor would check in",
   asks_for_person: "Asking for a real person",
 };
@@ -167,28 +167,39 @@ function replyLine(audit: ChatData["audit"]): string {
 
 /** Jev's answers that set a reading, as the questions and the chance of yes. */
 function Answers({ answers, combined }: { answers: LevelAnswer[]; combined: number | null }) {
-  const rows: [string, number][] = [
-    ...answers.map((a) => [USER_SIGNAL_LABELS[a.signal] ?? a.signal, a.value] as [string, number]),
-    // No one weak answer was the reason, so show what they add up to.
-    ...(combined !== null ? [["Small self-harm signals, together", combined] as [string, number]] : []),
-  ];
+  const rows = answers.map((a) => [USER_SIGNAL_LABELS[a.signal] ?? a.signal, a.value] as [string, number]);
   return (
     <figure>
       <figcaption className="mb-1 text-xs text-muted">What Jev saw in this message</figcaption>
-      <ul className="space-y-1">
-        {rows.map(([label, v]) => (
-          <li key={label} className="grid grid-cols-[minmax(0,1fr)_3rem_2.5rem] items-center gap-2 text-sm">
-            <span className="truncate" title={label}>
-              {label}
-            </span>
-            <span className="h-1.5 rounded-full bg-line" aria-hidden="true">
-              <span className="block h-full rounded-full bg-accent" style={{ width: pct(v) }} />
-            </span>
-            <span className="text-right font-mono text-xs text-muted">{pct(v)}</span>
-          </li>
-        ))}
-      </ul>
+      {combined === null ? (
+        <AnswerRows rows={rows} />
+      ) : (
+        // No one weak answer was the reason: they add up, and another answer confirms them.
+        <>
+          <AnswerRows rows={[["Small self-harm signals, together", combined]]} />
+          <p className="mt-1.5 mb-1 text-xs text-muted">confirmed by</p>
+          <AnswerRows rows={rows} />
+        </>
+      )}
     </figure>
+  );
+}
+
+function AnswerRows({ rows }: { rows: [string, number][] }) {
+  return (
+    <ul className="space-y-1">
+      {rows.map(([label, v]) => (
+        <li key={label} className="grid grid-cols-[minmax(0,1fr)_3rem_2.5rem] items-center gap-2 text-sm">
+          <span className="truncate" title={label}>
+            {label}
+          </span>
+          <span className="h-1.5 rounded-full bg-line" aria-hidden="true">
+            <span className="block h-full rounded-full bg-accent" style={{ width: pct(v) }} />
+          </span>
+          <span className="text-right font-mono text-xs text-muted">{pct(v)}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -254,7 +265,11 @@ export function TurnNote({
         {/* A turn already at CRISIS is explained by its reply line. */}
         {audit.shortCircuit !== "already-crisis" && (
           <p className="text-muted">
-            {answers.length > 0 ? answers.slice(0, 2).map((a) => `${USER_SIGNAL_LABELS[a.signal]} ${pct(a.value)}`).join(", ") : note}
+            {answers.length === 0
+              ? note
+              : combined !== null
+                ? `Small self-harm signals ${pct(combined)}, confirmed by ${answers.map((a) => `${USER_SIGNAL_LABELS[a.signal]?.toLowerCase()} ${pct(a.value)}`).join(" and ")}`
+                : answers.slice(0, 2).map((a) => `${USER_SIGNAL_LABELS[a.signal]} ${pct(a.value)}`).join(", ")}
           </p>
         )}
         <p>
