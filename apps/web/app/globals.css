@@ -28,9 +28,13 @@
   --color-level-watch: #fab219;
   --color-level-elevated: #ec835a;
   --color-level-crisis: #d03b3b;
-  /* Chart series (dataviz reference categorical slots 1 and 2, light; validated as a pair). */
+  /* Chart series: dataviz reference categorical slots 1-5, light, validated as a set of five.
+     Slots 3-5 are below 3:1 on white, so every series also has a text label beside its swatch. */
   --color-series-1: #2a78d6;
   --color-series-2: #eb6834;
+  --color-series-3: #1baf7a;
+  --color-series-4: #eda100;
+  --color-series-5: #e87ba4;
   /* The landing page's soft light behind its glass: a pale accent blue and a pale sage. */
   --color-glow-blue: #9fc3f0;
   --color-glow-sage: #b4dbc3;
