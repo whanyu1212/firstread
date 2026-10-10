@@ -27,7 +27,7 @@ export const SLIDES: (SlideMeta & { Content: ComponentType })[] = [
   { title: "The problem", act: ACT_1, steps: 2, Content: Problem },
   { title: "What the check needs", act: ACT_1, steps: 3, Content: Requirements },
   { title: "Why Jev", act: ACT_1, steps: 2, Content: WhyJev },
-  { title: "From Jev's answers to a level", act: ACT_2, steps: 3, Content: AnswersToLevel },
+  { title: "Jev's answers to a level", act: ACT_2, steps: 3, Content: AnswersToLevel },
   { title: "Jev in the harness", act: ACT_2, steps: 4, Content: Harness },
   { title: "The iteration loop", act: ACT_2, steps: 3, Content: Iterations },
   { title: "Staying honest", act: ACT_2, steps: 4, Content: Honest },

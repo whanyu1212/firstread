@@ -1,14 +1,16 @@
 "use client";
 
 import { motion } from "motion/react";
+import { useState } from "react";
 import iterations from "@/slides/data/iterations.json";
 import { DURATION, useTransition } from "./motion";
-import { Stat } from "./Stat";
 import { useStep } from "./steps";
 
 /**
- * Act 2, the iteration loop: BHH test recall at ELEVATED or above after each change, one change per
- * build step, with the false alarms it cost. From slides/data/iterations.json
+ * Act 2, the iteration loop: after each change, how much real risk the BHH test split caught at
+ * ELEVATED or above (recall) against how many no-risk messages it flagged (false alarms), one
+ * change per build step, joined in order like operating points on an ROC curve. The gain and its
+ * cost read off the same picture. From slides/data/iterations.json
  * (`pnpm --filter firstread export:iterations`), which rescores each saved run with its commit's
  * policy.
  */
@@ -17,85 +19,189 @@ const first = steps[0]!;
 const last = steps.at(-1)!;
 const pct = (v: number) => `${v.toFixed(1)}%`;
 const points = (v: number) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(1)}`;
-const day = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+const day = (iso: string) =>
+  new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+  });
+
+// Zoomed to where the points are, in whole steps of 5 points of recall and 1 of false alarms; the
+// recall axis says where it starts.
+const Y_MIN = Math.floor((Math.min(...steps.map((s) => s.recall)) - 3) / 5) * 5;
+const X_MAX = Math.ceil(Math.max(...steps.map((s) => s.falseAlarms)) + 1);
+const W = 520;
+const H = 250;
+const PLOT = { top: 14, bottom: 196, left: 86, right: 500 };
+const x = (v: number) => PLOT.left + (v / X_MAX) * (PLOT.right - PLOT.left);
+const y = (v: number) => PLOT.top + ((100 - v) / (100 - Y_MIN)) * (PLOT.bottom - PLOT.top);
+const X_TICKS = Array.from({ length: X_MAX + 1 }, (_, i) => i);
+const Y_TICKS = Array.from({ length: (100 - Y_MIN) / 5 + 1 }, (_, i) => Y_MIN + i * 5);
+// Each number sits beside its point, away from its neighbours: below-right for the first, then
+// alternating left and right of points that sit close together.
+const LABEL = [
+  { dx: 12, dy: 20, anchor: "start" },
+  { dx: -14, dy: -10, anchor: "end" },
+  { dx: 14, dy: -10, anchor: "start" },
+] as const;
 
 export function Iterations() {
   const step = useStep();
   const t = useTransition();
+  const [hover, setHover] = useState<number | null>(null);
   const { positive, negative } = last.cases;
   // The headline follows the build: the latest change shown, against where it started.
   const now = steps[Math.max(0, Math.min(step, steps.length) - 1)]!;
 
   return (
     <figure
-      aria-label={`SI and self-harm messages caught at ELEVATED or above: ${steps.map((s) => `${s.change}, ${pct(s.recall)}, with ${pct(s.falseAlarms)} of no-risk messages flagged`).join("; ")}.`}
+      aria-label={`SI and self-harm messages caught at ELEVATED or above, against no-risk messages flagged: ${steps.map((s) => `${s.change}, ${pct(s.recall)} caught, ${pct(s.falseAlarms)} flagged`).join("; ")}.`}
     >
-      <Stat
-        value={pct(now.recall)}
-        label="of real risk caught"
-        versus={
-          now === first
-            ? `With ${pct(first.falseAlarms)} of no-risk messages flagged.`
-            : `Up from ${pct(first.recall)}. No-risk messages flagged: ${pct(first.falseAlarms)} → ${pct(now.falseAlarms)}.`
-        }
-      />
-      <ol className="space-y-5" aria-hidden="true">
-        {steps.map((s, i) => {
-          const shown = step >= i + 1;
-          const prev = steps[i - 1];
-          return (
-            <motion.li
-              key={s.commit}
-              initial={false}
-              animate={shown ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
-              transition={shown ? t(DURATION.base) : t(0)}
+      <div className="grid items-start gap-x-10 gap-y-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+        <div>
+          <p className="mb-2 text-xl leading-snug">
+            <span className="font-semibold">{pct(now.recall)} of real risk caught</span>
+            <span className="text-muted">
+              {now === first
+                ? `, with ${pct(first.falseAlarms)} of no-risk messages flagged.`
+                : `: ${points(now.recall - first.recall)} points, for ${points(now.falseAlarms - first.falseAlarms)} points of false alarms.`}
+            </span>
+          </p>
+          <svg viewBox={`0 0 ${W} ${H}`} className="w-full" aria-hidden="true">
+            {Y_TICKS.map((v) => (
+              <g key={`y${v}`}>
+                <line x1={PLOT.left} x2={PLOT.right} y1={y(v)} y2={y(v)} className="stroke-line" />
+                <text x={PLOT.left - 10} y={y(v) + 5} textAnchor="end" className="fill-muted font-mono text-[16px]">
+                  {v}%
+                </text>
+              </g>
+            ))}
+            {X_TICKS.map((v) => (
+              <text
+                key={`x${v}`}
+                x={x(v)}
+                y={PLOT.bottom + 22}
+                textAnchor={v === 0 ? "start" : v === X_MAX ? "end" : "middle"}
+                className="fill-muted font-mono text-[16px]"
+              >
+                {v}%
+              </text>
+            ))}
+            <line x1={PLOT.left} x2={PLOT.left} y1={PLOT.top} y2={PLOT.bottom} className="stroke-ink/20" />
+            <text x={(PLOT.left + PLOT.right) / 2} y={H - 4} textAnchor="middle" className="fill-muted text-[16px]">
+              No-risk messages flagged (false alarms)
+            </text>
+            <text
+              transform={`translate(14 ${(PLOT.top + PLOT.bottom) / 2}) rotate(-90)`}
+              textAnchor="middle"
+              className="fill-muted text-[16px]"
             >
-              {/* On a phone the numbers go under the change, so its name keeps the full width. */}
-              <div className="grid gap-x-5 sm:grid-cols-[minmax(0,1fr)_auto]">
-                <div>
-                  <p>
-                    <span className="text-lg font-semibold leading-tight">{s.change}</span>{" "}
-                    <span className="font-mono text-xs whitespace-nowrap text-muted">
-                      {s.commit} · {day(s.date)}
-                    </span>
-                  </p>
-                  <p className="mt-0.5 text-sm text-muted">{s.miss}</p>
-                </div>
-                <div className="mt-1 flex items-baseline gap-3 sm:mt-0 sm:block sm:text-right">
-                  <p className="font-mono text-lg font-semibold">{pct(s.recall)}</p>
-                  <p className="font-mono text-xs whitespace-nowrap text-muted">
-                    false alarms {pct(s.falseAlarms)}
-                    {prev && ` (${points(s.falseAlarms - prev.falseAlarms)})`}
-                  </p>
-                </div>
-              </div>
-              <div className="relative mt-2 h-3 rounded-full bg-line">
-                <motion.span
-                  className="absolute inset-y-0 left-0 origin-left rounded-full bg-series-1"
-                  style={{ width: `${s.recall}%` }}
+              Real risk caught, from {Y_MIN}%
+            </text>
+
+            {steps.slice(1).map((s, i) => {
+              const prev = steps[i]!;
+              const shown = step >= i + 2;
+              return (
+                <motion.line
+                  key={`seg${s.commit}`}
+                  x1={x(prev.falseAlarms)}
+                  y1={y(prev.recall)}
+                  x2={x(s.falseAlarms)}
+                  y2={y(s.recall)}
+                  stroke="var(--color-series-1)"
+                  strokeWidth={2}
                   initial={false}
-                  animate={{ scaleX: shown ? 1 : 0 }}
-                  transition={shown ? t(DURATION.slow, 0.15) : t(0)}
+                  animate={{
+                    pathLength: shown ? 1 : 0,
+                    opacity: shown ? 1 : 0,
+                  }}
+                  transition={shown ? t(DURATION.base) : t(0)}
                 />
-                {/* Where the step before stopped, so the gain shows as the bar passing it. */}
-                {prev && (
-                  <span className="absolute -inset-y-1 w-0.5 bg-ink/60" style={{ left: `${prev.recall}%` }} />
-                )}
-              </div>
-            </motion.li>
-          );
-        })}
-      </ol>
-      <motion.figcaption
-        className="mt-5 text-base text-muted"
-        initial={false}
-        animate={{ opacity: step >= 1 ? 1 : 0 }}
-        transition={step >= 1 ? t(DURATION.base, 0.3) : t(0)}
-      >
-        BHH test split, {positive.toLocaleString("en")} suicidal-ideation and self-harm messages and{" "}
-        {negative.toLocaleString("en")} with no risk, read at ELEVATED or above. Each saved run is rescored with the
-        policy as it was at that commit.
-      </motion.figcaption>
+              );
+            })}
+            {steps.map((s, i) => {
+              const shown = step >= i + 1;
+              const l = LABEL[i % LABEL.length]!;
+              return (
+                <motion.g
+                  key={s.commit}
+                  initial={false}
+                  animate={{ opacity: shown ? 1 : 0 }}
+                  transition={shown ? t(DURATION.fast, i === 0 ? 0 : DURATION.base) : t(0)}
+                >
+                  <circle
+                    cx={x(s.falseAlarms)}
+                    cy={y(s.recall)}
+                    r={hover === i ? 8 : 6.5}
+                    fill="var(--color-series-1)"
+                    stroke="var(--color-canvas)"
+                    strokeWidth={2}
+                  />
+                  <text
+                    x={x(s.falseAlarms) + l.dx}
+                    y={y(s.recall) + l.dy}
+                    textAnchor={l.anchor}
+                    className="fill-ink text-[17px] font-semibold"
+                  >
+                    {i + 1}
+                  </text>
+                </motion.g>
+              );
+            })}
+          </svg>
+        </div>
+
+        <div>
+          {/* The changes, numbered as on the chart: each one's miss, and where it left recall and false alarms. */}
+          <ol className="space-y-4 lg:mt-1">
+            {steps.map((s, i) => {
+              const shown = step >= i + 1;
+              const prev = steps[i - 1];
+              return (
+                <motion.li
+                  key={s.commit}
+                  className={`grid grid-cols-[1.5rem_minmax(0,1fr)] gap-x-2 rounded-lg ${hover === i ? "bg-raised" : ""}`}
+                  initial={false}
+                  animate={shown ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
+                  transition={shown ? t(DURATION.base) : t(0)}
+                  onMouseEnter={() => setHover(i)}
+                  onMouseLeave={() => setHover(null)}
+                >
+                  <span className="text-lg font-semibold text-series-1">{i + 1}</span>
+                  <div>
+                    <p className="leading-snug">
+                      <span className="block text-lg font-semibold">{s.change}</span>
+                      <span className="block font-mono text-fig whitespace-nowrap">
+                        <span className="font-semibold">{pct(s.recall)}</span>
+                        <span className="text-muted">
+                          {" "}
+                          · {pct(s.falseAlarms)} flagged
+                          {prev && ` (${points(s.falseAlarms - prev.falseAlarms)})`}
+                        </span>
+                      </span>
+                    </p>
+                    <p className="text-fig leading-snug text-muted">
+                      {s.miss}{" "}
+                      <span className="font-mono whitespace-nowrap">
+                        {s.commit} · {day(s.date)}
+                      </span>
+                    </p>
+                  </div>
+                </motion.li>
+              );
+            })}
+          </ol>
+          <motion.figcaption
+            className="mt-4 text-fig text-muted"
+            initial={false}
+            animate={{ opacity: step >= 1 ? 1 : 0 }}
+            transition={step >= 1 ? t(DURATION.base, 0.3) : t(0)}
+          >
+            BHH test split ({positive.toLocaleString("en")} at risk, {negative.toLocaleString("en")} not), at ELEVATED or above. Each run
+            rescored with the policy at its commit.
+          </motion.figcaption>
+        </div>
+      </div>
     </figure>
   );
 }

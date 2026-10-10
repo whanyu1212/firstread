@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
   pageExtensions: ["ts", "tsx", "md", "mdx"],
   // The firstread package ships TypeScript source.
   transpilePackages: ["firstread"],
+  // No route badge over the slides in recordings and screenshots; build errors still show.
+  devIndicators: false,
 };
 
 export default createMDX({})(nextConfig);

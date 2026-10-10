@@ -37,7 +37,7 @@ export function TurnTimeline({ at: from }: { at: number }) {
       <div className="relative space-y-4">
         {BARS.map((b) => (
           <div key={b.label}>
-            <p className={`mb-1.5 text-base ${b.firstread ? "text-ink" : "text-muted"}`}>{b.label}</p>
+            <p className={`mb-1.5 text-fig ${b.firstread ? "text-ink" : "text-muted"}`}>{b.label}</p>
             <div className="relative h-4">
               <motion.span
                 className={`absolute inset-y-0 rounded ${b.firstread ? "bg-series-1" : "bg-ink/15"}`}
@@ -59,7 +59,7 @@ export function TurnTimeline({ at: from }: { at: number }) {
           aria-hidden="true"
         />
       </div>
-      <div className="relative mt-2 h-5 border-t border-line font-mono text-sm text-muted" aria-hidden="true">
+      <div className="relative mt-2 h-5 border-t border-line font-mono text-fig text-muted" aria-hidden="true">
         {Array.from({ length: AXIS + 1 }, (_, s) => (
           <span
             key={s}

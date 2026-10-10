@@ -1,27 +1,25 @@
 import { Glass } from "@/components/deck/Glass";
 import { Latency } from "@/components/deck/Latency";
 import { Roc } from "@/components/deck/Roc";
-import { Build, Point, Points, Split } from "@/components/deck/steps";
+import { Point, Points, Split, Stack } from "@/components/deck/steps";
 
 <Split
   visual={
-    <Glass at={1}>
-      <div className="grid [&>*]:col-start-1 [&>*]:row-start-1">
-        <Build at={1} until={2} className="self-center">
-          <Roc at={1} />
-        </Build>
-        <Build at={2} className="self-center">
-          <Latency at={2} />
-        </Build>
-      </div>
-    </Glass>
+    <Stack>
+      <Glass at={1} until={2}>
+        <Roc at={1} />
+      </Glass>
+      <Glass at={2}>
+        <Latency at={2} />
+      </Glass>
+    </Stack>
   }
 >
 
 # Why Jev
 
 <Points>
-  <Point at={1} title="Calibrated yes/no probabilities,">so thresholds mean something.</Point>
+  <Point at={1} title="Yes/no probabilities that rise with real risk,">so a cutoff means something.</Point>
   <Point at={2} title="14 questions">about each message, answered in one call.</Point>
   <Point at={2} title="About 0.5s a check">(median), and <strong>$0.04</strong> per 1,000 turns.</Point>
 </Points>

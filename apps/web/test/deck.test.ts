@@ -51,7 +51,8 @@ describe("slide build steps", () => {
     // Every slide file is in the deck, once.
     expect(entries.map((e) => e.file).sort()).toEqual(readdirSync(dir).filter((f) => f.endsWith(".mdx")).sort());
     for (const { steps, file } of entries) {
-      const ats = [...readFileSync(path.join(dir, file), "utf8").matchAll(/at=\{(\d+)\}/g)].map((m) => Number(m[1]));
+      // `at={n}`, and a figure's named steps such as `deadlineAt={n}`.
+      const ats = [...readFileSync(path.join(dir, file), "utf8").matchAll(/\b(?:at|[a-z]+At)=\{(\d+)\}/g)].map((m) => Number(m[1]));
       expect(Math.max(0, ...ats), file).toBe(steps);
     }
   });

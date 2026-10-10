@@ -4,11 +4,15 @@ A safety layer for mental health companion agents. FirstRead reads every turn
 before anything reaches the user: it checks the user's message for signs of
 self-harm risk, then checks the companion's draft reply before it is sent.
 Both checks use [Jev](https://vercel.com/docs/ai-gateway/sdks-and-apis/typesafe)
-through Vercel AI Gateway, which returns calibrated probabilities fast enough to
-run on every turn. The two checks run in parallel.
+through Vercel AI Gateway, which returns yes/no probabilities fast enough to run
+on every turn. On the BHH test split, real risk rises at every step of Jev's
+probability, so a cutoff means the same on every message; in the middle range the
+numbers run low, so FirstRead's cutoffs are set from measured recall rather than
+read as odds. The user check runs while the companion writes its draft, so it
+adds almost no wait.
 
 ```
-user message ──► user check ──► risk level (only goes up within a conversation)
+user message ──► user check ──► risk level (rises at once, comes down slowly)
                                      │
 companion LLM ──► draft ──► reply check ──► send | replace | escalate
 ```
@@ -16,6 +20,11 @@ companion LLM ──► draft ──► reply check ──► send | replace | e
 - **send**: the draft is fine and goes out unchanged.
 - **replace**: the draft is swapped for a safe reply that points to support.
 - **escalate**: crisis reply goes out immediately and a human reviewer is alerted.
+
+The risk level belongs to the conversation, not to one message (`risk.ts`). It rises as soon as
+a message warrants it, and one calm message never lowers it. ELEVATED settles to WATCH after
+several calm turns in a row (`settleAfter`), never to NONE. Only a person clears CRISIS
+(`clearCrisis()`), and only down to ELEVATED.
 
 The user check starts as soon as the message arrives (`guard.startTurn()`), so it runs
 while the companion writes its draft; `finish(draft)` adds the reply check. Both must answer

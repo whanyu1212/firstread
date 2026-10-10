@@ -40,7 +40,7 @@ export function Cover() {
           </p>
         </div>
       </div>
-      <p className="glass self-start rounded-2xl px-4 py-2 text-sm sm:rounded-full sm:text-base">
+      <p className="glass self-start rounded-2xl px-4 py-2 text-fig sm:rounded-full sm:text-fig">
         Built for <span className="font-semibold">What Would Jev Do?</span>, AdaL's online hackathon, October 6–11,
         2026
       </p>

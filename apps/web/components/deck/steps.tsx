@@ -14,7 +14,7 @@ export const useStep = () => useContext(StepContext);
 
 /**
  * Shown from step `at` (until step `until`, if given), rising into place. It keeps its space in
- * the layout while hidden, so nothing jumps; stack two in one grid cell to swap them.
+ * the layout while hidden, so nothing jumps. To swap whole panels, use a Stack of Glass instead.
  */
 export function Build({
   at,
@@ -45,6 +45,20 @@ export function Build({
   );
 }
 
+/**
+ * Panels that replace one another in one place, one per build step (`<Glass at until>`): stacked in
+ * one grid cell, so the column keeps the tallest panel's height and the text beside it never moves,
+ * while each panel fits its own content. `start` keeps what the panels share (a message on top) in
+ * the same place; charts sit centred.
+ */
+export function Stack({ align = "center", children }: { align?: "center" | "start"; children: ReactNode }) {
+  return (
+    <div className={`grid [&>*]:col-start-1 [&>*]:row-start-1 ${align === "start" ? "items-start" : "items-center"}`}>
+      {children}
+    </div>
+  );
+}
+
 /** A slide's points, revealed one per step. */
 export function Points({ children }: { children: ReactNode }) {
   return <ul className="points">{children}</ul>;
@@ -64,6 +78,19 @@ export function Point({ at, title, children }: { at: number; title: string; chil
     >
       <strong>{title}</strong> {children}
     </motion.li>
+  );
+}
+
+/**
+ * The slide's text above, its figure across the full width below: for a figure that needs the room
+ * (a timeline, the replay). On a wide screen the title and its line sit side by side.
+ */
+export function Wide({ visual, children }: { visual: ReactNode; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-8 lg:gap-10">
+      <div className="slide-text slide-head">{children}</div>
+      <div className="slide-visual min-w-0">{visual}</div>
+    </div>
   );
 }
 
