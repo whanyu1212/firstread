@@ -1,8 +1,8 @@
 import { Glass } from "@/components/deck/Glass";
 import { Iterations } from "@/components/deck/Iterations";
-import { Point, Points, Split } from "@/components/deck/steps";
+import { Point, Points, Wide } from "@/components/deck/steps";
 
-<Split
+<Wide
   visual={
     <Glass at={1}>
       <Iterations />
@@ -12,12 +12,10 @@ import { Point, Points, Split } from "@/components/deck/steps";
 
 # The iteration loop
 
-Because the rules are code, the loop is short.
-
 <Points>
   <Point at={1} title="Find a miss">in the benchmark, and read why it was missed.</Point>
-  <Point at={2} title="Rewrite or add a question,">or change a rule.</Point>
+  <Point at={2} title="Rewrite or add a question,">or change a rule: they're code.</Point>
   <Point at={3} title="Re-run the eval,">and count what it cost in false alarms.</Point>
 </Points>
 
-</Split>
+</Wide>
