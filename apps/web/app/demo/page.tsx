@@ -13,7 +13,8 @@ export default function Demo() {
     <div className="relative isolate h-dvh overflow-x-hidden overflow-y-auto">
       <Glow />
       <main className="mx-auto flex h-full max-w-6xl flex-col gap-3 px-4 py-3 sm:px-6 sm:py-4">
-        <DemoClient />
+        {/* With a key on the server, visitors can type without their own (HY-153). */}
+        <DemoClient serverKey={Boolean(process.env.OPENAI_API_KEY)} />
       </main>
     </div>
   );

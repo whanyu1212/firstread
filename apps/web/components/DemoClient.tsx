@@ -9,6 +9,7 @@ import { Composer, CompanionReply, dataPart, errorMessage, messageText, UserBubb
 import { DemoNotice } from "./DemoNotice";
 import { Logo } from "./Logo";
 import { MarginKey, MarginRule, NowSummary, TurnNote } from "./Margin";
+import { LIMITS } from "@/lib/limits";
 import { OpenAIKeyField } from "./OpenAIKeyField";
 import { type CompanionChatState, useCompanionChat } from "./useCompanionChat";
 
@@ -40,7 +41,7 @@ const levelAfter = (e: Exchange | undefined): RiskLevel | null => (e?.reply && d
  * /demo, on one screen: the controls and the notice on glass at the top, then the conversation,
  * which is the only thing that scrolls, with the message box pinned under it.
  */
-export function DemoClient() {
+export function DemoClient({ serverKey }: { serverKey: boolean }) {
   const chat = useCompanionChat();
   const [keyOpen, setKeyOpen] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
@@ -99,7 +100,7 @@ export function DemoClient() {
                       ? `Playing “${chat.playing.title}” live. ${chat.playing.shows}`
                       : "Each reply appears only once FirstRead has checked it."}
               </p>
-              {chat.replay && <ReplayControls chat={chat} />}
+              {chat.replay && <ReplayControls chat={chat} canRunLive={serverKey || Boolean(chat.key)} />}
             </div>
           </header>
         )}
@@ -110,7 +111,7 @@ export function DemoClient() {
           aria-live="polite"
         >
           {rows.length === 0 ? (
-            <EmptyState chat={chat} onAddKey={() => setKeyOpen(true)} />
+            <EmptyState chat={chat} serverKey={serverKey} onAddKey={() => setKeyOpen(true)} />
           ) : (
             rows.map((e, i) => {
               const pending = !e.reply || !dataPart(e.reply, "audit");
@@ -241,8 +242,8 @@ function Controls({ chat, keyOpen, onToggleKey }: { chat: CompanionChatState; ke
   );
 }
 
-/** An empty conversation: the scenarios, ready to play, and a reminder about the key. */
-function EmptyState({ chat, onAddKey }: { chat: CompanionChatState; onAddKey: () => void }) {
+/** An empty conversation: the scenarios, ready to play, and what typing your own message runs on. */
+function EmptyState({ chat, serverKey, onAddKey }: { chat: CompanionChatState; serverKey: boolean; onAddKey: () => void }) {
   return (
     <div className={ROW}>
       <div className="col-span-2 p-5 lg:col-span-1 lg:p-6">
@@ -279,10 +280,13 @@ function EmptyState({ chat, onAddKey }: { chat: CompanionChatState; onAddKey: ()
         )}
         {!chat.key && (
           <p className="mt-5 text-sm text-muted">
-            Your own messages run live, with your OpenAI key.{" "}
+            {serverKey
+              ? `Your own messages run live on the demo's key, up to ${LIMITS.turnsPerChat} per conversation. To go further, `
+              : "Your own messages run live, with your OpenAI key. "}
             <button type="button" onClick={onAddKey} className="text-accent hover:underline">
-              Add your key
+              {serverKey ? "add your own key" : "Add your key"}
             </button>
+            {serverKey && "."}
           </p>
         )}
       </div>
@@ -295,8 +299,8 @@ function EmptyState({ chat, onAddKey }: { chat: CompanionChatState; onAddKey: ()
 
 const recordedOn = (iso: string) => new Date(iso).toLocaleDateString("en-SG", { day: "numeric", month: "long" });
 
-/** A replay's controls: speed, skip to the end, and running the same scenario live with a key. */
-function ReplayControls({ chat }: { chat: CompanionChatState }) {
+/** A replay's controls: speed, skip to the end, and running the same scenario live when there's a key. */
+function ReplayControls({ chat, canRunLive }: { chat: CompanionChatState; canRunLive: boolean }) {
   const replay = chat.replay!;
   const button = "h-8 rounded-md border border-line bg-canvas px-3 text-ink hover:bg-raised disabled:opacity-40";
   return (
@@ -321,7 +325,7 @@ function ReplayControls({ chat }: { chat: CompanionChatState }) {
           </button>
         </>
       )}
-      {chat.key && (
+      {canRunLive && (
         <button type="button" onClick={() => chat.playLive(replay.scenario)} className={button}>
           Run it live
         </button>

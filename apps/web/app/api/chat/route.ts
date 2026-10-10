@@ -4,15 +4,21 @@ import { after } from "next/server";
 import { type ChatMessage, JEV_DOWN_HEADER, MAX_MESSAGE_LENGTH, OPENAI_KEY_HEADER } from "@/lib/chat";
 import { COMPANION_MODEL, draftReply } from "@/lib/companion";
 import { guard, guardWithJevDown } from "@/lib/firstread";
+import { chatCapRefusal, clientIp, rateRefusal } from "@/lib/limits";
 import { extractNotes } from "@/lib/notes";
-import { MAX_NOTES, memorySessionStore } from "@/lib/session";
+import { redis } from "@/lib/redis";
+import { MAX_NOTES, memorySessionStore, redisSessionStore } from "@/lib/session";
 import { DraftTimeoutError, type TurnResult, runTurn } from "@/lib/turn";
 
 /** A full turn: the companion's call plus FirstRead's checks. */
 export const maxDuration = 60;
 
-// In memory: per instance, so the deployed app needs a hosted store (HY-22).
-const sessions = memorySessionStore();
+// Redis when it's configured, as on Vercel (HY-22): the next message may reach another instance.
+// In memory for local development, where there's one.
+const sessions = redis ? redisSessionStore(redis) : memorySessionStore();
+if (!redis && process.env.VERCEL) {
+  console.warn("No Redis configured: sessions are per instance, so a chat can lose its history and risk level.");
+}
 
 /**
  * Error details for the server log, never the error object itself: AI SDK errors can carry the
@@ -24,18 +30,25 @@ function describeError(error: unknown): string {
   return `${e?.name ?? "Error"}${e?.statusCode ? ` (${e.statusCode})` : ""}: ${message}`;
 }
 
-function companionErrorMessage(error: unknown): string {
+/** A turn the demo won't run, with the reason for the visitor (e.g. the conversation's cap). */
+class TurnRefused extends Error {}
+
+function companionErrorMessage(error: unknown, ourKey: boolean): string {
   const status = (error as { statusCode?: number })?.statusCode;
+  if (ourKey && (status === 401 || status === 429)) {
+    return "The demo's OpenAI budget is used up, so FirstRead sent a safe reply instead. Add your own OpenAI key to keep chatting.";
+  }
   if (status === 401) return "Your OpenAI API key was rejected. Check it and try again.";
   if (error instanceof DraftTimeoutError) return "The companion took too long, so FirstRead sent a safe reply instead.";
   return "The companion couldn't reply, so FirstRead sent a safe reply instead.";
 }
 
 export async function POST(req: Request) {
-  // The visitor's own key (HY-153). Only local development may fall back to the server's key.
-  const apiKey =
-    req.headers.get(OPENAI_KEY_HEADER)?.trim() ||
-    (process.env.NODE_ENV === "development" ? process.env.OPENAI_API_KEY : undefined);
+  // The visitor's own key if they gave one, else ours (HY-153: typed messages run on our key during
+  // judging, capped by the limits below and the OpenAI project's spending limit).
+  const ownKey = req.headers.get(OPENAI_KEY_HEADER)?.trim();
+  const apiKey = ownKey || process.env.OPENAI_API_KEY;
+  const ourKey = !ownKey;
   if (!apiKey) return Response.json({ error: "Add your OpenAI API key to chat live." }, { status: 401 });
 
   // The client sends only the new message: the history the checks rely on lives on the server.
@@ -48,6 +61,16 @@ export async function POST(req: Request) {
   if (typeof id !== "string" || !id || !text) return Response.json({ error: "Bad request." }, { status: 400 });
   if (text.length > MAX_MESSAGE_LENGTH) {
     return Response.json({ error: `Messages can be up to ${MAX_MESSAGE_LENGTH} characters.` }, { status: 400 });
+  }
+  if (redis) {
+    const refusal = await rateRefusal({ store: redis, ip: clientIp(req), ourKey });
+    if (refusal) return Response.json({ error: refusal }, { status: 429 });
+  } else if (ourKey && process.env.NODE_ENV === "production") {
+    // Fail closed: without Redis the per-IP limits can't hold, so our key isn't offered at all.
+    return Response.json(
+      { error: "Live chat on the demo's key is off right now. The scenarios still play, or add your own OpenAI key." },
+      { status: 503 },
+    );
   }
 
   let finished!: (result: TurnResult | null) => void;
@@ -75,6 +98,8 @@ export async function POST(req: Request) {
         // One turn at a time per chat: read, run and save in order.
         const { session, result } = await sessions.lock(id, async () => {
           const session = await sessions.get(id);
+          const cap = chatCapRefusal(session.conv.turns.filter((t) => t.role === "user").length, ourKey);
+          if (cap) throw new TurnRefused(cap);
           const result = await runTurn(
           text,
           session,
@@ -96,7 +121,7 @@ export async function POST(req: Request) {
         const { audit, exercise, handoff, shortCircuit, draftError, timings } = result;
         if (draftError) {
           console.error("companion:", describeError(draftError));
-          writer.write({ type: "data-companionError", data: { message: companionErrorMessage(draftError) } });
+          writer.write({ type: "data-companionError", data: { message: companionErrorMessage(draftError, ourKey) } });
         }
         writer.write({
           type: "data-audit",
@@ -139,6 +164,7 @@ export async function POST(req: Request) {
       }
     },
     onError(error) {
+      if (error instanceof TurnRefused) return error.message;
       console.error("chat route:", describeError(error));
       return "Something went wrong. Please try again.";
     },

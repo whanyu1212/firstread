@@ -1,12 +1,45 @@
 import { Conversation } from "firstread";
 import { describe, expect, it } from "vitest";
-import { emptySession, fromConversation, memorySessionStore, toConversation } from "@/lib/session";
+import { type RedisLike, type SessionStore, emptySession, fromConversation, memorySessionStore, redisSessionStore, toConversation } from "@/lib/session";
 import { EXERCISES, exerciseIndex } from "@/lib/skills/exercises";
 import { supportLinesSkill } from "@/lib/skills/support-lines";
 
-describe("memorySessionStore", () => {
+/** Upstash, in memory: values go through JSON as they do over REST, and keys expire. */
+function fakeRedis(): RedisLike {
+  const data = new Map<string, { value: string; until: number }>();
+  const live = (key: string) => {
+    const entry = data.get(key);
+    if (entry && entry.until <= Date.now()) data.delete(key);
+    return data.get(key);
+  };
+  return {
+    async get<T>(key: string) {
+      const entry = live(key);
+      return entry ? (JSON.parse(entry.value) as T) : null;
+    },
+    async set(key, value, opts) {
+      if ("nx" in opts && live(key)) return null;
+      const ms = "ex" in opts ? opts.ex * 1000 : opts.px;
+      data.set(key, { value: JSON.stringify(value), until: Date.now() + ms });
+      return "OK";
+    },
+    // The store's one script: delete the lock if it still holds this token.
+    async eval<A extends unknown[], R>(_script: string, keys: string[], args: A) {
+      const entry = live(keys[0]!);
+      if (entry && JSON.parse(entry.value) === args[0]) data.delete(keys[0]!);
+      return 1 as R;
+    },
+  };
+}
+
+const STORES: [string, () => SessionStore][] = [
+  ["memorySessionStore", () => memorySessionStore()],
+  ["redisSessionStore", () => redisSessionStore(fakeRedis(), { pollMs: 2 })],
+];
+
+describe.each(STORES)("%s", (_name, makeStore) => {
   it("keeps sessions apart and returns copies", async () => {
-    const store = memorySessionStore();
+    const store = makeStore();
     const a = await store.get("a");
     a.notes.push({ kind: "other", text: "x", at: "" });
     expect((await store.get("a")).notes).toHaveLength(0); // not saved yet
@@ -16,7 +49,7 @@ describe("memorySessionStore", () => {
   });
 
   it("a stale write can't undo a newer turn's escalation", async () => {
-    const store = memorySessionStore();
+    const store = makeStore();
     const stale = await store.get("a");
     const fresh = await store.get("a");
     fresh.conv.risk = { ...fresh.conv.risk, level: "CRISIS", version: fresh.conv.risk.version + 1 };
@@ -26,7 +59,7 @@ describe("memorySessionStore", () => {
   });
 
   it("a newer write may lower the level (ELEVATED settling to WATCH)", async () => {
-    const store = memorySessionStore();
+    const store = makeStore();
     const s = await store.get("a");
     s.conv.risk = { ...s.conv.risk, level: "ELEVATED", version: 1 };
     await store.save("a", s);
@@ -36,7 +69,7 @@ describe("memorySessionStore", () => {
   });
 
   it("an equal-version write from the same base can't undo an escalation", async () => {
-    const store = memorySessionStore();
+    const store = makeStore();
     const base = await store.get("a");
     const crisis = structuredClone(base);
     crisis.conv.risk = { ...crisis.conv.risk, level: "CRISIS", version: 2 };
@@ -48,7 +81,7 @@ describe("memorySessionStore", () => {
   });
 
   it("lock() runs a chat's turns one at a time, and other chats in parallel", async () => {
-    const store = memorySessionStore();
+    const store = makeStore();
     const order: string[] = [];
     const slow = (tag: string, ms: number) => async () => {
       order.push(`${tag} start`);
@@ -63,13 +96,13 @@ describe("memorySessionStore", () => {
   });
 
   it("lock() keeps going after a failed turn", async () => {
-    const store = memorySessionStore();
+    const store = makeStore();
     await expect(store.lock("a", async () => { throw new Error("boom"); })).rejects.toThrow("boom");
     await expect(store.lock("a", async () => "ok")).resolves.toBe("ok");
   });
 
   it("keeps notes added after a snapshot was read", async () => {
-    const store = memorySessionStore();
+    const store = makeStore();
     const snapshot = await store.get("a"); // the next turn reads its session
     await store.update("a", (s) => s.notes.push({ kind: "coping", text: "walks help", at: "" })); // background note
     snapshot.conv.turns.push({ role: "user", text: "hi" });
@@ -80,7 +113,7 @@ describe("memorySessionStore", () => {
   });
 
   it("update() changes the latest copy, not a stale one", async () => {
-    const store = memorySessionStore();
+    const store = makeStore();
     const s = emptySession();
     s.conv.turns.push({ role: "user", text: "hi" });
     await store.save("a", s);
@@ -89,7 +122,9 @@ describe("memorySessionStore", () => {
     expect(got.conv.turns).toHaveLength(1);
     expect(got.notes).toHaveLength(1);
   });
+});
 
+describe("memorySessionStore", () => {
   it("forgets sessions after the TTL and drops the oldest past the cap", async () => {
     const expired = memorySessionStore({ ttlMs: -1 });
     await expired.update("a", (s) => s.notes.push({ kind: "other", text: "x", at: "" }));
@@ -126,5 +161,37 @@ describe("skills", () => {
   it("the support lines are Singapore's verified ones", () => {
     const text = supportLinesSkill();
     for (const s of ["1767", "9151 1767", "1771", "+65 6669 1771", "995 or 999"]) expect(text).toContain(s);
+  });
+});
+
+describe("redisSessionStore", () => {
+  it("is shared: a second instance on the same Redis sees the first one's session", async () => {
+    const redis = fakeRedis();
+    const one = redisSessionStore(redis);
+    const s = emptySession();
+    s.conv.risk = { ...s.conv.risk, level: "CRISIS", version: 3 };
+    await one.save("a", s);
+    expect((await redisSessionStore(redis).get("a")).conv.risk.level).toBe("CRISIS");
+  });
+
+  it("lock() holds across instances on the same Redis", async () => {
+    const redis = fakeRedis();
+    const order: string[] = [];
+    const turn = (tag: string, ms: number) => async () => {
+      order.push(`${tag} start`);
+      await new Promise((r) => setTimeout(r, ms));
+      order.push(`${tag} end`);
+    };
+    await Promise.all([
+      redisSessionStore(redis, { pollMs: 2 }).lock("a", turn("one", 30)),
+      redisSessionStore(redis, { pollMs: 2 }).lock("a", turn("two", 1)),
+    ]);
+    expect(order).toEqual(["one start", "one end", "two start", "two end"]);
+  });
+
+  it("forgets sessions after the TTL", async () => {
+    const store = redisSessionStore(fakeRedis(), { ttlMs: -1000 });
+    await store.update("a", (s) => s.notes.push({ kind: "other", text: "x", at: "" }));
+    expect((await store.get("a")).notes).toHaveLength(0);
   });
 });

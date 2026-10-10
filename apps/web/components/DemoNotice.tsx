@@ -23,7 +23,7 @@ export function DemoNotice() {
           <details className="inline [&[open]]:block">
             <summary className="inline cursor-pointer text-accent">Where your messages go</summary>
             <span className="mt-1 block max-w-[70ch] text-ink/75">
-              Messages go to OpenAI (with your key) for the companion, and to Jev through Vercel AI Gateway for FirstRead's checks.
+              Messages go to OpenAI (on the demo's key, or yours if you add one) for the companion, and to Jev through Vercel AI Gateway for FirstRead's checks.
               Conversations are kept for a short time, then deleted.
             </span>
           </details>

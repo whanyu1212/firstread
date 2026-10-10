@@ -1,7 +1,7 @@
 /**
  * Scripted conversations for the demo, one user message at a time. Mild and non-graphic: this is
  * shown on a projector and on a public page. Each is recorded through the live pipeline
- * (scripts/record-replay.ts) and replayed without a key; with a key it can also run live.
+ * (scripts/record-replay.ts) and replayed without a key; it can also run live, on the demo's key or the visitor's.
  *
  * Out until their live runs pass their labels: "Risk builds over turns" and `long-slow-build`
  * escalate to CRISIS too early (HY-160); "Disclosure, then recovery" and `long-disclosure-recovers`
