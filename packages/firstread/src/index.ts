@@ -14,6 +14,8 @@ export type { AskOptions, FailureReason, JevClient, NoulQuestion } from "./jev";
 export {
   RISK_LEVELS,
   assessLevel,
+  levelEvidence,
+  type LevelAnswer,
   atLeast,
   crisisRoutes,
   decideAction,

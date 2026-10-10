@@ -1,0 +1,59 @@
+import { type LevelAnswer, atLeast, levelEvidence } from "firstread/policy";
+import type { ChatData } from "./chat";
+
+/** The words in the demo margin's turn notes (components/Margin.tsx), kept apart so they're tested. */
+
+/** A probability as the margin shows it. */
+export const pct = (v: number) => `${Math.round(v * 100)}%`;
+
+/**
+ * Why this turn reads as it does: the answers in this message that set its reading
+ * (policy.ts levelEvidence, the same rules as the level), or, when there are none, a sentence.
+ */
+export function why(
+  risk: ChatData["risk"],
+  audit: ChatData["audit"],
+  reason: string | null,
+): { answers: LevelAnswer[]; combined: number | null; note: string | null } {
+  if (audit.shortCircuit === "already-crisis") {
+    return { answers: [], combined: null, note: "No checks this turn: the conversation is already at CRISIS, so the crisis reply went out at once." };
+  }
+  if (!audit.userSignals) return { answers: [], combined: null, note: "Jev didn't answer about this message in time." };
+  const reading = levelEvidence(audit.userSignals);
+  // The conversation's level can differ from this message's own reading: held below CRISIS without
+  // self-harm context, raised by evidence across turns, or kept from earlier. Then say why.
+  const differs = reading.level !== risk.level;
+  if (reading.answers.length > 0) return { answers: reading.answers, combined: reading.combined, note: differs ? reason : null };
+  if (risk.level === "NONE") return { answers: [], combined: null, note: "Jev saw no sign of risk in this message." };
+  return {
+    answers: [],
+    combined: null,
+    note: reason ?? "Nothing new in this message. FirstRead keeps the level from earlier messages.",
+  };
+}
+
+/**
+ * What happened to the companion's draft, when it wasn't sent as written. Mirrors decideAction's
+ * order (policy.ts). Whether support lines were due isn't in the page's data, so a replacement at
+ * ELEVATED with no support in the draft is put down to that.
+ */
+export function draftChange(audit: ChatData["audit"]): string | null {
+  if (audit.shortCircuit === "crisis") return "The companion was stopped and the crisis reply went out.";
+  if (audit.shortCircuit === "already-crisis") return null;
+  if (audit.failures.length > 0 && audit.action !== "escalate") {
+    return "Jev didn't answer in time, so the companion's reply was held back and a cautious one went out.";
+  }
+  if (audit.action === "escalate") return "The crisis reply went out instead of the companion's draft.";
+  if (audit.action !== "replace" || !audit.replySignals) return null;
+  const r = audit.replySignals;
+  if (r.enables_harm >= 0.1) return `The draft could have enabled harm (${pct(r.enables_harm)}), so a safe reply went out instead.`;
+  if (atLeast(audit.level, "WATCH") && r.dismisses_risk >= 0.3) {
+    return `The draft moved past the distress (${pct(r.dismisses_risk)}), so a reply that acknowledges it went out instead.`;
+  }
+  if (atLeast(audit.level, "ELEVATED") && r.offers_support_resources < 0.5) {
+    return "The draft didn't point to support, so a reply that does went out instead.";
+  }
+  if (r.clinical_overreach >= 0.5) return `The draft gave clinical advice (${pct(r.clinical_overreach)}), so a safe reply went out instead.`;
+  return "The companion's draft was replaced with a safe reply.";
+}
+
