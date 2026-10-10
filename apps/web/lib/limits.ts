@@ -3,7 +3,8 @@
  * cap on turns per conversation, and per IP, turns per minute and per day. The per-day cap and the
  * per-conversation cap only apply on our OpenAI key; with their own key a visitor pays for the
  * companion, and only the per-minute cap protects Jev. Counted in Redis, so the limits hold across
- * serverless instances; without Redis (local development) only the per-conversation cap applies.
+ * serverless instances. A production server without Redis doesn't use our key at all (the chat
+ * route refuses it), since the per-IP limits couldn't hold.
  */
 
 export const LIMITS = { turnsPerChat: 30, perMinute: 8, perDay: 60 } as const;
@@ -21,33 +22,37 @@ async function over(store: CounterStore, key: string, max: number, seconds: numb
   return count > max;
 }
 
-/** Why this turn can't run, in words for the visitor, or null if it can. */
-export async function turnRefusal({
+const OWN_KEY = "add your own OpenAI key to keep going.";
+
+/**
+ * Why this conversation can't take another message on our key, or null if it can. Checked inside
+ * the chat's turn lock, so two requests sent at once can't both slip under the cap.
+ */
+export function chatCapRefusal(turns: number, ourKey: boolean): string | null {
+  return ourKey && turns >= LIMITS.turnsPerChat
+    ? `This demo conversation has reached its ${LIMITS.turnsPerChat} messages. Start a new one, or ${OWN_KEY}`
+    : null;
+}
+
+/** Why this visitor can't send a message right now, in words for them, or null if they can. */
+export async function rateRefusal({
   store,
   ip,
-  turns,
   ourKey,
   now = Date.now(),
 }: {
-  store: CounterStore | null;
+  store: CounterStore;
   ip: string;
-  /** User turns already in this conversation. */
-  turns: number;
   ourKey: boolean;
   now?: number;
 }): Promise<string | null> {
-  const ownKey = "Add your own OpenAI key to keep going.";
-  if (ourKey && turns >= LIMITS.turnsPerChat) {
-    return `This demo conversation has reached its ${LIMITS.turnsPerChat} messages. Start a new one, or ${ownKey.toLowerCase()}`;
-  }
-  if (!store) return null;
   const minute = Math.floor(now / 60_000);
   if (await over(store, `firstread:rate:min:${ip}:${minute}`, LIMITS.perMinute, 60)) {
     return "That's a lot of messages in a minute. Please wait a moment and try again.";
   }
   const day = Math.floor(now / 86_400_000);
   if (ourKey && (await over(store, `firstread:rate:day:${ip}:${day}`, LIMITS.perDay, 86_400))) {
-    return `You've used today's ${LIMITS.perDay} live messages on the demo's key. ${ownKey}`;
+    return `You've used today's ${LIMITS.perDay} live messages on the demo's key. To go further, ${OWN_KEY}`;
   }
   return null;
 }

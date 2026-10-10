@@ -4,7 +4,7 @@ import { after } from "next/server";
 import { type ChatMessage, JEV_DOWN_HEADER, MAX_MESSAGE_LENGTH, OPENAI_KEY_HEADER } from "@/lib/chat";
 import { COMPANION_MODEL, draftReply } from "@/lib/companion";
 import { guard, guardWithJevDown } from "@/lib/firstread";
-import { clientIp, turnRefusal } from "@/lib/limits";
+import { chatCapRefusal, clientIp, rateRefusal } from "@/lib/limits";
 import { extractNotes } from "@/lib/notes";
 import { redis } from "@/lib/redis";
 import { MAX_NOTES, memorySessionStore, redisSessionStore } from "@/lib/session";
@@ -29,6 +29,9 @@ function describeError(error: unknown): string {
   const message = (e?.message ?? String(error)).replace(/sk-[A-Za-z0-9_*-]+/g, "sk-[redacted]");
   return `${e?.name ?? "Error"}${e?.statusCode ? ` (${e.statusCode})` : ""}: ${message}`;
 }
+
+/** A turn the demo won't run, with the reason for the visitor (e.g. the conversation's cap). */
+class TurnRefused extends Error {}
 
 function companionErrorMessage(error: unknown, ourKey: boolean): string {
   const status = (error as { statusCode?: number })?.statusCode;
@@ -59,9 +62,16 @@ export async function POST(req: Request) {
   if (text.length > MAX_MESSAGE_LENGTH) {
     return Response.json({ error: `Messages can be up to ${MAX_MESSAGE_LENGTH} characters.` }, { status: 400 });
   }
-  const turns = (await sessions.get(id)).conv.turns.filter((t) => t.role === "user").length;
-  const refusal = await turnRefusal({ store: redis, ip: clientIp(req), turns, ourKey });
-  if (refusal) return Response.json({ error: refusal }, { status: 429 });
+  if (redis) {
+    const refusal = await rateRefusal({ store: redis, ip: clientIp(req), ourKey });
+    if (refusal) return Response.json({ error: refusal }, { status: 429 });
+  } else if (ourKey && process.env.NODE_ENV === "production") {
+    // Fail closed: without Redis the per-IP limits can't hold, so our key isn't offered at all.
+    return Response.json(
+      { error: "Live chat on the demo's key is off right now. The scenarios still play, or add your own OpenAI key." },
+      { status: 503 },
+    );
+  }
 
   let finished!: (result: TurnResult | null) => void;
   const turnDone = new Promise<TurnResult | null>((resolve) => (finished = resolve));
@@ -88,6 +98,8 @@ export async function POST(req: Request) {
         // One turn at a time per chat: read, run and save in order.
         const { session, result } = await sessions.lock(id, async () => {
           const session = await sessions.get(id);
+          const cap = chatCapRefusal(session.conv.turns.filter((t) => t.role === "user").length, ourKey);
+          if (cap) throw new TurnRefused(cap);
           const result = await runTurn(
           text,
           session,
@@ -152,6 +164,7 @@ export async function POST(req: Request) {
       }
     },
     onError(error) {
+      if (error instanceof TurnRefused) return error.message;
       console.error("chat route:", describeError(error));
       return "Something went wrong. Please try again.";
     },
