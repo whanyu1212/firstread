@@ -6,7 +6,26 @@
 | `conversations.jsonl` | Multi-turn conversations with per-exchange labels (see below) |
 | `fetch-bhh.ts`, `run-bhh.ts` | The Between Help and Harm benchmark (`pnpm fetch:bhh`, `pnpm eval:bhh`) |
 | `compare-bhh.ts` | Jev vs the LLM baselines in `llm-client.ts` (`pnpm compare:bhh`) |
+| `export-deck.ts` | The BHH comparison as the deck's chart data, `apps/web/slides/data/bhh.json` (`pnpm export:deck`) |
 | `probe-limits.ts` | Rate-limit probe for the gateway (`pnpm probe:limits`) |
+
+## LLM baselines (`llm-client.ts`)
+
+`pnpm eval:bhh --client <name>` asks a general model the same questions Jev gets, about the same
+text. Each model is scored in the best way it allows:
+
+| Client | Model | Called through | How a probability is read |
+| --- | --- | --- | --- |
+| `luna` | gpt-6-luna | OpenAI (`OPENAI_API_KEY`) | P(true) from the answer's token probabilities, thinking off |
+| `sol` | gpt-6-sol | OpenAI | Written by the model, low thinking |
+| `gemini` | gemini-3.8-flash | AI Gateway (`AI_GATEWAY_API_KEY`) | Written by the model, low thinking |
+| `deepseek` | deepseek-v4.1-flash | AI Gateway | Written by the model, low thinking |
+| `glm` | glm-5.3-flash | AI Gateway | Written by the model, low thinking |
+
+The gateway returns no token probabilities for the flash models (checked Oct 10), so they can't
+be read the way Luna is. A written probability that's missing or isn't a number makes the case an
+error rather than a 0. `--retry` reruns a run's errors. `compare:bhh` and `export:deck` only use
+cases every run answered, so retry until the errors are gone, or every model loses those cases.
 
 ## Multi-turn conversations (`conversations.jsonl`)
 

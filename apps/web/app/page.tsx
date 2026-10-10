@@ -11,7 +11,9 @@ const ON_GLOW = "text-ink/75";
 
 // Every number on the page is read from the deck's chart data or the question set, not typed in.
 const jev = bhh.runs.find((r) => r.id === "jev")!;
-const luna = bhh.runs.find((r) => r.id === "luna")!;
+const others = bhh.runs.filter((r) => r.id !== "jev");
+const bestAuc = [...others].sort((a, b) => b.auc - a.auc)[0]!;
+const fastest = [...others].sort((a, b) => a.latency.p50 - b.latency.p50)[0]!;
 const seconds = (ms: number) => `${(ms / 1000).toFixed(2)}s`;
 const count = (n: number) => n.toLocaleString("en-US");
 const userQuestions = Object.keys(USER_TURN_QUESTIONS).length;
@@ -20,12 +22,12 @@ const replyQuestions = Object.keys(REPLY_QUESTIONS).length;
 const STATS = [
   {
     value: jev.auc.toFixed(3),
-    versus: `${luna.name}: ${luna.auc.toFixed(3)}`,
+    versus: `Next best: ${bestAuc.name}, ${bestAuc.auc.toFixed(3)}`,
     body: `How well each one separates risk from no risk (AUC), on ${count(bhh.cases.positive)} messages with self-harm risk and ${count(bhh.cases.negative)} without.`,
   },
   {
     value: seconds(jev.latency.p50),
-    versus: `${luna.name}: ${seconds(luna.latency.p50)}`,
+    versus: `Next fastest: ${fastest.name}, ${seconds(fastest.latency.p50)}`,
     body: "Median time per check, on the same messages.",
   },
   {
@@ -117,8 +119,9 @@ export default function Home() {
             ))}
           </div>
           <p className={`mt-4 text-sm ${ON_GLOW}`}>
-            Benchmark: the Between Help and Harm test split. Jev and {luna.name} answered the same questions about the
-            same messages.
+            Benchmark: the Between Help and Harm test split. Jev and {others.length} general models (
+            {others.slice(0, -1).map((r) => r.name).join(", ")} and {others.at(-1)!.name}) answered the same questions
+            about the same messages.
           </p>
         </section>
 

@@ -3,25 +3,21 @@
 import { motion } from "motion/react";
 import bhh from "@/slides/data/bhh.json";
 import { DURATION, useTransition } from "./motion";
+import { MODELS, jev, others } from "./series";
 import { Stat } from "./Stat";
 import { useStep } from "./steps";
 
 /**
- * Slide 3: Jev vs gpt-6-luna as ROC curves on the BHH test split, zoomed to the region that
- * matters (few false alarms, high recall), with recall at a 5% false-alarm rate marked.
- * From slides/data/bhh.json (`pnpm --filter firstread export:deck`).
+ * Slide 3: Jev vs four general models as ROC curves on the BHH test split, zoomed to the region
+ * that matters (few false alarms, high recall), with recall at a 5% false-alarm rate marked. The
+ * table under the chart is its legend and its labels: three of the five colours are below 3:1 on
+ * white, so no curve is identified by colour alone. From slides/data/bhh.json.
  */
-const SERIES = [
-  { id: "jev", color: "var(--color-series-1)" },
-  { id: "luna", color: "var(--color-series-2)" },
-] as const;
-const runs = SERIES.map((s) => ({ ...s, run: bhh.runs.find((r) => r.id === s.id)! }));
-
 const X_MAX = 0.2;
 const Y_MIN = 0.6;
 const MARK_FAR = 0.05;
 const W = 480;
-const H = 340;
+const H = 300;
 const PAD = { top: 32, right: 12, bottom: 48, left: 48 };
 const x = (v: number) => PAD.left + (v / X_MAX) * (W - PAD.left - PAD.right);
 const y = (v: number) => PAD.top + ((1 - v) / (1 - Y_MIN)) * (H - PAD.top - PAD.bottom);
@@ -43,22 +39,32 @@ function visible(roc: number[][]): [number, number][] {
 }
 
 const recallAt = (roc: number[][], far: number) => Math.max(...roc.filter(([fx]) => fx! <= far).map(([, ry]) => ry!));
+const best = [...others].sort((a, b) => b.run.auc - a.run.auc)[0]!;
+// Share of answers at 0 or 1, lowest first: the fewer, the more thresholds there are to choose from.
+const saturation = others.map((m) => m.run.saturated).sort((a, b) => a - b);
+// Jev is drawn last so its curve sits on top where they cross.
+const drawOrder = [...others, jev];
 
 export function Roc({ at }: { at: number }) {
   const step = useStep();
   const t = useTransition();
   const play = step >= at;
+  const show = (delay: number) => ({
+    initial: false as const,
+    animate: { opacity: play ? 1 : 0 },
+    transition: play ? t(DURATION.base, delay) : t(0),
+  });
 
   return (
     <figure>
       <Stat
-        value={runs[0]!.run.auc.toFixed(3)}
-        label={`${runs[0]!.run.name}'s AUC`}
-        color={runs[0]!.color}
-        versus={`${runs[1]!.run.name}: ${runs[1]!.run.auc.toFixed(3)}, on the same messages.`}
+        value={jev.run.auc.toFixed(3)}
+        label={`${jev.run.name}'s AUC`}
+        color={jev.color}
+        versus={`Best of the other four: ${best.run.name}, ${best.run.auc.toFixed(3)}.`}
       />
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img"
-        aria-label={`ROC curves on the BHH test split. ${runs.map((r) => `${r.run.name}: AUC ${r.run.auc}, recall ${pct(recallAt(r.run.roc, MARK_FAR))} at a ${pct(MARK_FAR)} false-alarm rate`).join(". ")}.`}>
+        aria-label={`ROC curves on the BHH test split. ${MODELS.map((m) => `${m.run.name}: AUC ${m.run.auc}, recall ${pct(recallAt(m.run.roc, MARK_FAR))} at a ${pct(MARK_FAR)} false-alarm rate`).join(". ")}.`}>
         <defs>
           <clipPath id="roc-plot">
             <rect x={PAD.left} y={PAD.top - 4} width={W - PAD.left - PAD.right + 4} height={H - PAD.top - PAD.bottom + 4} />
@@ -93,59 +99,67 @@ export function Roc({ at }: { at: number }) {
         />
 
         <g clipPath="url(#roc-plot)">
-          {runs.map((r, i) => {
-            const pts = visible(r.run.roc);
+          {drawOrder.map((m, i) => {
+            const pts = visible(m.run.roc);
             const d = pts.map(([fx, fy], j) => `${j ? "L" : "M"}${x(fx).toFixed(1)},${y(fy).toFixed(1)}`).join(" ");
             return (
               <motion.path
-                key={r.id}
+                key={m.id}
                 d={d}
                 fill="none"
-                stroke={r.color}
-                strokeWidth={2.5}
+                stroke={m.color}
+                strokeWidth={m === jev ? 2.5 : 2}
                 strokeLinejoin="round"
                 initial={false}
                 animate={{ pathLength: play ? 1 : 0 }}
-                transition={play ? t(DURATION.slow, i * 0.3) : t(0)}
+                transition={play ? t(DURATION.slow, i * 0.12) : t(0)}
               />
             );
           })}
         </g>
 
-        {runs.map((r, i) => {
-          const recall = recallAt(r.run.roc, MARK_FAR);
-          return (
-            <motion.g key={r.id} initial={false} animate={{ opacity: play ? 1 : 0 }} transition={play ? t(DURATION.base, DURATION.slow + i * 0.2) : t(0)}>
-              <circle cx={x(MARK_FAR)} cy={y(recall)} r={6} fill={r.color} stroke="var(--color-canvas)" strokeWidth={2} />
-              {/* Jev's label sits up and to the left, clear of its curve, which runs on to the right. */}
-              <text x={x(MARK_FAR) + (i === 0 ? -12 : 12)} y={y(recall) + (i === 0 ? -10 : 20)} textAnchor={i === 0 ? "end" : "start"} className="fill-ink text-[15px] font-semibold">
-                {r.run.name} {pct(recall)}
-              </text>
-              {/* Direct label at the right end of each curve, with its AUC. */}
-              <text x={x(X_MAX) - 4} y={y(visible(r.run.roc).at(-1)![1]) + (i === 0 ? 22 : -10)} textAnchor="end" className="text-[14px]" style={{ fill: r.color }}>
-                {r.run.name}, AUC {r.run.auc.toFixed(3)}
-              </text>
-            </motion.g>
-          );
-        })}
-      </svg>
-      <ul className="mt-1 flex gap-5 text-base" aria-label="Legend">
-        {runs.map((r) => (
-          <li key={r.id} className="flex items-center gap-2">
-            <span className="h-[3px] w-5 rounded" style={{ background: r.color }} aria-hidden="true" />
-            {r.run.name}
-          </li>
+        {drawOrder.map((m) => (
+          <motion.circle key={m.id} cx={x(MARK_FAR)} cy={y(recallAt(m.run.roc, MARK_FAR))} r={m === jev ? 6 : 5}
+            fill={m.color} stroke="var(--color-canvas)" strokeWidth={2} {...show(DURATION.slow)} />
         ))}
-      </ul>
-      <motion.figcaption
-        className="mt-2 text-lg"
-        initial={false}
-        animate={{ opacity: play ? 1 : 0 }}
-        transition={play ? t(DURATION.base, DURATION.slow + 0.4) : t(0)}
-      >
-        {pct(runs[1]!.run.saturated)} of Luna's answers are 0 or 1, so there's no threshold in between to tune.{" "}
+        {/* Only Jev is labelled on the chart; the table below names every curve. Its label sits up
+            and to the left, clear of its curve, which runs on to the right. */}
+        <motion.text x={x(MARK_FAR) - 12} y={y(recallAt(jev.run.roc, MARK_FAR)) - 10} textAnchor="end"
+          className="fill-ink text-[15px] font-semibold" {...show(DURATION.slow + 0.2)}>
+          {jev.run.name} {pct(recallAt(jev.run.roc, MARK_FAR))}
+        </motion.text>
+      </svg>
+
+      <table className="mt-1 w-full text-base" aria-label="Legend">
+        <thead className="text-sm text-muted">
+          <tr>
+            <th scope="col" className="pb-1 text-left font-normal">Model</th>
+            <th scope="col" className="pb-1 text-right font-normal">AUC</th>
+            <th scope="col" className="pb-1 text-right font-normal">Recall at {pct(MARK_FAR)}</th>
+          </tr>
+        </thead>
+        <tbody className="tabular-nums">
+          {MODELS.map((m) => (
+            <tr key={m.id} className={m === jev ? "font-semibold" : undefined}>
+              <th scope="row" className={`py-px text-left ${m === jev ? "font-semibold" : "font-normal"}`}>
+                <span className="flex items-center gap-2">
+                  <span className="h-[3px] w-5 rounded" style={{ background: m.color }} aria-hidden="true" />
+                  {m.run.name}
+                </span>
+              </th>
+              <td className="py-px text-right">{m.run.auc.toFixed(3)}</td>
+              <td className="py-px text-right">{pct(recallAt(m.run.roc, MARK_FAR))}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <motion.figcaption className="mt-2 text-base" {...show(DURATION.slow + 0.4)}>
+        Jev gives an answer in between far more often: {pct(jev.run.saturated)} of its answers are 0 or 1,
+        against {pct(saturation[0]!)}–{pct(saturation.at(-1)!)} for the others.{" "}
         <span className="text-muted">
-          BHH test split: {bhh.cases.positive} self-harm and {bhh.cases.negative} no-risk messages.
+          Luna is read from its true/false token probabilities; the flash models state a probability, at
+          low thinking. BHH test split: {bhh.cases.positive.toLocaleString("en-US")} self-harm and{" "}
+          {bhh.cases.negative.toLocaleString("en-US")} no-risk messages, all answered by every model.
         </span>
       </motion.figcaption>
     </figure>
