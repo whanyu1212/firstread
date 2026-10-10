@@ -19,7 +19,10 @@ const PLACES: [number, number][][] = [
 ];
 
 export function DeckGlow() {
-  const slide = Number(usePathname().split("/").at(-1)) || 1;
+  // The layout also renders around a 404 (/deck/1.5, /deck/-1), so anything but a slide number
+  // gets the first arrangement.
+  const n = Number(usePathname().split("/").at(-1));
+  const slide = Number.isInteger(n) && n > 0 ? n : 1;
   const place = PLACES[(slide - 1) % PLACES.length]!;
   const move = (i: number) => ({ x: `${place[i]![0]}vw`, y: `${place[i]![1]}vw` });
   const transition = { duration: 1.6, ease: [0.4, 0, 0.2, 1] as const };
