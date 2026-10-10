@@ -164,13 +164,21 @@ export function probabilitiesFromLogprobs(tokens: TokenLogprob[], keys: string[]
 
 /**
  * The probability per key from a verbalized answer. The JSON may come fenced or with text around
- * it (GLM: the gateway doesn't pass response_format to zai), so the first flat {...} is read. A
+ * it (GLM: the gateway doesn't pass response_format to zai), so the answer is the first flat {...}
+ * that parses as JSON and holds one of the keys; brace groups in the text around it are skipped. A
  * missing, empty or non-numeric value throws: as NaN or "" it would silently score as 0.
  */
 export function probabilitiesFromText(content: string, keys: string[]): Record<string, number> {
-  const json = content.match(/\{[^{}]*\}/)?.[0];
-  if (!json) throw new Error(`no JSON object in answer: ${content.slice(0, 80)}`);
-  const answers = JSON.parse(json) as Record<string, unknown>;
+  const answers = [...content.matchAll(/\{[^{}]*\}/g)]
+    .map(([group]) => {
+      try {
+        return JSON.parse(group) as unknown;
+      } catch {
+        return null;
+      }
+    })
+    .find((v): v is Record<string, unknown> => typeof v === "object" && v !== null && keys.some((k) => k in v));
+  if (!answers) throw new Error(`no JSON object with the answers in: ${content.slice(0, 80)}`);
   const out: Record<string, number> = {};
   const missing: string[] = [];
   for (const key of keys) {

@@ -47,8 +47,13 @@ describe("probabilitiesFromText", () => {
   it("throws on a missing or non-numeric value instead of scoring NaN", () => {
     expect(() => probabilitiesFromText('{"ideation": 0.9}', ["ideation", "plan"])).toThrow(/plan/);
     expect(() => probabilitiesFromText('{"ideation": "high"}', ["ideation"])).toThrow(/ideation/);
-    expect(() => probabilitiesFromText("I can't answer that.", ["ideation"])).toThrow(/no JSON/);
+    expect(() => probabilitiesFromText("I can't answer that.", ["ideation"])).toThrow(/no JSON object/);
     expect(() => probabilitiesFromText('{"ideation": ""}', ["ideation"])).toThrow(/ideation/);
+  });
+
+  it("skips brace groups that aren't the answer, before or after it", () => {
+    expect(probabilitiesFromText('Probabilities use {0..1}: {"ideation": 0.3}', ["ideation"])).toEqual({ ideation: 0.3 });
+    expect(probabilitiesFromText('{"note": "x"} {"ideation": 0.4}', ["ideation"])).toEqual({ ideation: 0.4 });
   });
 
   it("reads the first object when text with braces follows it", () => {
