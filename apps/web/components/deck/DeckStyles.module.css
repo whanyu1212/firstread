@@ -104,6 +104,18 @@
   .appendixText > p, .appendixText > :global(.points) { font-size: 1.15rem; }
   .wide { gap: 1.25rem; }
 }
+/* Browser chrome can leave only ~600px of usable height on a laptop. */
+@media (min-width: 64rem) and (max-height: 700px) {
+  .slide { padding-top: 0.4rem; padding-bottom: 0.4rem; }
+  .frame { gap: 0.6rem; }
+  .chapter { margin-bottom: 0.5rem; padding-bottom: 0; }
+  .title, .appendixText > h1 { font-size: 2.5rem; }
+  .intro { margin-top: 0.6rem; }
+  .note { padding-top: 0.4rem; }
+  .figure { padding: 0.65rem; }
+  .appendixLabel { margin-bottom: 0.65rem; padding-bottom: 0; }
+  .wide { gap: 0.8rem; }
+}
 @media (max-width: 63.99rem) {
   .slide { padding: 2rem 1.4rem; }
   .constraints, .comparison, .duo { grid-template-columns: 1fr; }

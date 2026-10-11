@@ -91,6 +91,16 @@
 }
 
 /* Slide typography for MDX content: the slide itself, or its text column beside a graphic. */
+/* Deck typography and spacing use rem throughout. Scope this modest reduction to desktop
+   deck routes so the landing page, demo, and mobile reading size stay unchanged. Use relative
+   sizes so the browser's default font preference and zoom still apply. */
+@media (min-width: 64rem) {
+  :root:has(.deck) { font-size: 87.5%; }
+}
+@media (min-width: 64rem) and (max-height: 700px) {
+  :root:has(.deck) { font-size: 81.25%; }
+}
+
 :is(.slide, .slide-text) > h1 {
   @apply mb-8 text-5xl leading-[1.05] font-semibold tracking-[-0.03em] sm:text-6xl;
 }
@@ -176,10 +186,10 @@
   scrollbar-gutter: stable;
 }
 
-/* The deck on a projector or a large screen: everything scales up together. 18px keeps 1920×1080
-   at the 60rem of height a slide is laid out for at 1440×900, so a slide that fits one fits both. */
-@media (min-width: 100rem) {
-  html:has(.deck) {
-    font-size: 112.5%;
+/* Only enlarge presentation text when both dimensions have room. A wide Chrome window can
+   still be short after its toolbar and bookmarks, so width alone must not trigger scaling. */
+@media (min-width: 100rem) and (min-height: 62.5rem) {
+  :root:has(.deck) {
+    font-size: 100%;
   }
 }
