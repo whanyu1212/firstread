@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { RECORDINGS } from "../lib/recordings";
-import { finalStep, messagesAt, replaySchedule } from "../lib/replay";
+import { finalStep, messagesAt, replaySchedule, replyMessage, type Recording } from "../lib/replay";
 import { SCENARIOS } from "../lib/scenarios";
 
 describe("recordings", () => {
@@ -30,5 +30,25 @@ describe("replay", () => {
     const again = messagesAt(rec, { turn: 1, phase: "user" }, "b-");
     expect(again.map((m) => m.id)).not.toEqual(first.map((m) => m.id));
     expect(messagesAt(rec, finalStep(rec))).toHaveLength(2 * rec.turns.length);
+  });
+
+  it("adds a recorded draft only when a synthetic turn is done", () => {
+    const turn = { ...rec.turns[0]!, draft: "the companion's original words" };
+    expect(replyMessage(turn, 0, "checked").parts).not.toContainEqual(
+      expect.objectContaining({ type: "data-recordedDraft" }),
+    );
+    expect(replyMessage(turn, 0, "done").parts).toContainEqual({
+      type: "data-recordedDraft",
+      data: { text: "the companion's original words" },
+    });
+  });
+
+  it("keeps recordings made before draft capture compatible", () => {
+    const oldRecording = structuredClone(rec) as Recording;
+    for (const turn of oldRecording.turns) delete turn.draft;
+    const replies = messagesAt(oldRecording, finalStep(oldRecording)).filter((message) => message.role === "assistant");
+    for (const reply of replies) {
+      expect(reply.parts).not.toContainEqual(expect.objectContaining({ type: "data-recordedDraft" }));
+    }
   });
 });
