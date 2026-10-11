@@ -1,0 +1,184 @@
+.figure {
+  --figure-paper: #fafbf9;
+  --figure-ink: #18243a;
+  --figure-blue: #245dd3;
+  color: var(--figure-ink);
+}
+
+.statBand { position: relative; padding-left: 1rem; padding-top: 0.35rem; border-left: 1px solid #b6c3aa; }
+
+.statBand::before { content: none; }
+
+.plotSurface { position: relative; overflow: hidden; background: #ffffff55; }
+
+.rocPlot {
+  padding: 0.35rem 0.55rem 0;
+}
+
+@media (min-width: 64rem) {
+  .latencyFigure { display: grid; grid-template-columns: minmax(0, 0.6fr) minmax(0, 2.75fr); gap: 1rem; align-items: start; }
+  .latencyFigure > figcaption { grid-column: 1 / -1; }
+  .rocFigure { display: grid; grid-template-columns: minmax(0, 0.6fr) minmax(0, 1.5fr) minmax(0, 1.25fr); gap: 1rem; align-items: start; }
+  .rocFigure > figcaption { grid-column: 1 / -1; }
+  .rocFigure > .legend { overflow: hidden; border-top: 1px solid #919d85; background: transparent; }
+  .rocFigure .legend :is(th, td) { padding-left: 0.4rem; padding-right: 0.4rem; }
+  .rocFigure .legend th span { gap: 0.3rem; }
+  .rocFigure .legend th span span { width: 0.65rem; flex-shrink: 0; }
+  .rocFigure .rocPlot text { font-size: 16px; }
+}
+
+.legend {
+  overflow: hidden;
+  border: 1px solid rgb(24 36 58 / 0.1);
+  border-radius: 0.8rem;
+  background: rgb(250 251 249 / 0.92);
+}
+
+.legend thead {
+  background: rgb(24 36 58 / 0.045);
+}
+
+.legend :is(th, td) {
+  padding-right: 0.65rem;
+  padding-left: 0.65rem;
+}
+
+.legend tbody tr + tr {
+  border-top: 1px solid rgb(24 36 58 / 0.07);
+}
+
+.latencyPlot {
+  padding: 1.35rem 0.9rem 0.75rem;
+  background:
+    repeating-linear-gradient(180deg, transparent 0 2.72rem, rgb(24 36 58 / 0.055) 2.72rem calc(2.72rem + 1px)),
+    #fff;
+}
+
+.heading { position: relative; margin-bottom: 1rem; padding: 0.65rem 0; }
+
+.heading::before { content: none; }
+
+.message {
+  border-radius: 0;
+  background: #eeeee5;
+}
+
+.answerGroup {
+  padding-left: 0.7rem;
+  border-left: 2px solid rgb(36 93 211 / 0.16);
+}
+
+.answerRow {
+  min-height: 1.65rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.45rem;
+}
+
+.answerRow:nth-child(odd) {
+  background: rgb(24 36 58 / 0.025);
+}
+
+.ruleGroup { padding: 0.45rem 0.55rem 0.55rem; background: #eeeee570; }
+
+.ruleGroup .ruleRow { padding-top: 0.25rem; padding-bottom: 0.25rem; line-height: 1.3; }
+.ruleGrid { display: grid; gap: 0.7rem; }
+@media (min-width: 64rem) {
+  .ruleGrid { grid-template-columns: 1fr 1fr; align-items: start; }
+  .ruleGrid > :last-child { grid-column: 1 / -1; }
+  .ruleGrid > :last-child ul { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .ruleGrid > :last-child li { margin: 0; }
+  .ruleGrid .ruleRow { grid-template-columns: 1fr 1.25rem; gap: 0.15rem 0.5rem; }
+  .ruleRow > span:nth-last-child(3) { grid-column: 1 / -1; }
+}
+.policyFigure .heading { margin-bottom: 0.65rem; padding-top: 0.4rem; padding-bottom: 0.4rem; }
+.policyFigure > .message { margin-bottom: 0.8rem; }
+
+.history { padding: 0.55rem 0.75rem; border-left: 2px solid #8da37a; background: #e9eddf; }
+
+.fact {
+  position: relative;
+  padding-left: 1rem;
+}
+
+.fact::before {
+  position: absolute;
+  top: 0.55rem;
+  left: 0;
+  width: 0.4rem;
+  height: 0.4rem;
+  border: 1px solid rgb(36 93 211 / 0.45);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgb(36 93 211 / 0.07);
+  content: "";
+}
+
+.openHeading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.openHeading::after { content: none; }
+
+.openItem { position: relative; overflow: hidden; padding: 0.85rem 0 0.9rem; border-top: 1px solid #a6b199; }
+
+.openItem::before { content: none; }
+
+.status {
+  border-color: rgb(36 93 211 / 0.22);
+  background: rgb(36 93 211 / 0.07);
+  color: var(--figure-ink);
+  letter-spacing: 0.01em;
+}
+
+.metricGrid {
+  border-bottom: 0;
+}
+
+.metricCard { padding: 0.55rem 0.9rem; background: transparent; }
+
+.metricCard:first-child { border-color: #567458; background: transparent; }
+.metricCard:first-child p, .metricCard:first-child p span { color: #536e51; }
+.metricCard:first-child p:nth-child(2) { color: #294c34; font-family: var(--deck-serif); font-weight: 400; }
+.metricCard:last-child { border-color: #ba8767; background: transparent; }
+.metricCard:last-child p:nth-child(2) { color: #9c5239; font-family: var(--deck-serif); font-weight: 400; }
+
+.iterationPlot {
+  padding: 0.15rem 0.3rem 0;
+}
+
+.iterationItem {
+  padding: 0.35rem 0.65rem;
+  border: 1px solid transparent;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.iterationItem:hover {
+  border-color: rgb(36 93 211 / 0.14);
+  background: rgb(36 93 211 / 0.045);
+  box-shadow: 0 10px 24px -24px rgb(24 36 58 / 0.55);
+}
+
+.iterationItemCompact {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .iterationItem {
+    transition: none;
+  }
+}
+
+@media (min-width: 64rem) and (max-height: 800px) {
+  .policyFigure > .message { padding-top: 0.35rem; padding-bottom: 0.35rem; }
+  .completeIterations .metricCard { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0.2rem 0.8rem; padding-top: 0.35rem; padding-bottom: 0.35rem; }
+  .completeIterations .metricCard p { margin-top: 0.2rem; }
+  .completeIterations .metricCard p:nth-child(2) { font-size: 1.8rem; white-space: nowrap; }
+  .completeIterations .metricCard p:last-child { grid-column: 1 / -1; }
+  .completeIterations ol > li + li { margin-top: 0.5rem; }
+}

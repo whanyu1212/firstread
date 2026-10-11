@@ -1,0 +1,72 @@
+.scene { --connector: #a1b8db; }
+.eyebrow { display: block; color: #6a7b93; font-size: 0.9rem; }
+.message { display: flex; align-items: baseline; justify-content: center; gap: 1.3rem; padding: 0.8rem 1.2rem; background: #eceee5; }
+.message .eyebrow { color: #67725e; }
+.message blockquote { font-family: var(--deck-serif); font-size: 1.65rem; font-style: italic; color: #304139; }
+.fork { position: relative; height: 2.4rem; margin: 0 25%; border-top: 0; }
+.fork::before { content: ""; position: absolute; top: 0; bottom: 0.75rem; left: 50%; border-left: 1px solid var(--connector); }
+.fork::after { content: ""; position: absolute; inset: 1.2rem 0 0; border: 1px solid var(--connector); border-bottom: 0; border-radius: 0.45rem 0.45rem 0 0; }
+.fork span { position: absolute; z-index: 1; left: 50%; top: 0.55rem; transform: translateX(-50%); padding: 0.05rem 0.65rem; background: var(--deck-paper); font-size: 0.8rem; color: #617999; white-space: nowrap; }
+.paths { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: stretch; }
+.draft { display: flex; flex-direction: column; padding: 1.2rem 1.5rem 1.2rem 0; }
+.draft header { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.4rem 1rem; justify-content: space-between; margin-bottom: 1rem; }
+.draft h2, .checks h2 { font-size: 1.05rem; font-weight: 600; }
+.draft header > span { font-size: 0.85rem; color: #7c899c; }
+.draft blockquote { font-family: var(--deck-serif); font-size: 1.4rem; line-height: 1.45; letter-spacing: -0.015em; color: #3a463c; }
+.draftNote { margin-top: auto; padding-top: 1rem; font-size: 1rem; color: #6a7b93; }
+.checks { display: grid; grid-template-rows: auto auto; gap: 0; background: #eeeee5; }
+.checks section { position: relative; padding: 1rem 1.4rem; }
+.checks h2 { display: flex; align-items: center; gap: 0.7rem; color: #294e86; }
+.checks h2 > span { font-family: var(--font-geist-mono), monospace; font-size: 0.75rem; color: #3562a4; }
+.checks p { margin-top: 0.65rem; color: #506482; font-size: 1.05rem; line-height: 1.45; }
+.userCheck p { display: flex; align-items: baseline; gap: 0.7rem; flex-wrap: wrap; }
+.level { border-bottom: 2px solid #d29673; padding: 0.15rem 0; color: #844b2b; font-size: 0.9rem; font-weight: 600; letter-spacing: 0.04em; }
+.replyCheck { border-top: 1px solid #ccd0c1; }
+.score { display: flex; align-items: baseline; gap: 0.8rem; margin-top: 0.15rem; }
+.score > strong { font-size: 2.55rem; line-height: 1.1; font-weight: 550; letter-spacing: -0.04em; color: #244a81; }
+.score > span { font-size: 1rem; color: #5e7292; }
+.score b { font-weight: 600; }
+.draftArrow { position: absolute; top: 50%; left: -3rem; width: 3rem; text-align: center; color: #6689bf; font-size: 1.65rem; transform: translateY(-50%); }
+.delivery { position: relative; display: grid; grid-template-columns: 1fr 1.7fr; align-items: center; gap: 1.5rem; margin-top: 1.4rem; padding: 1.15rem 0; border-top: 2px solid #59735b; color: #2f4638; }
+.delivery::before { content: ""; position: absolute; height: 1.4rem; right: 25%; bottom: 100%; border-left: 1px solid var(--connector); }
+.delivery .eyebrow { color: #627359; }
+.delivery h2 { margin-top: 0.4rem; font-family: var(--deck-serif); font-size: 1.6rem; line-height: 1.15; font-weight: 400; letter-spacing: -0.03em; }
+.delivery blockquote { font-size: 1.18rem; line-height: 1.4; }
+.delivery p { margin-top: 0.35rem; color: #63715d; font-size: 1rem; }
+.checks .failed { margin-top: 0.5rem; color: #92502f; font-size: 0.98rem; font-weight: 600; }
+@media (prefers-reduced-motion: no-preference) {
+  .draft, .userCheck { animation: arrive 600ms 250ms both; }
+  .replyCheck { animation: arrive 600ms 650ms both; }
+  .delivery { animation: arrive 650ms 1000ms both; }
+  @keyframes arrive { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+}
+@media (min-width: 64rem) and (max-height: 800px) {
+  .message { padding: 0.5rem 1rem; }
+  .message blockquote { font-size: 1.2rem; }
+  .fork { height: 2rem; }
+  .fork::after { top: 1rem; }
+  .fork span { top: 0.4rem; }
+  .draft { padding: 0.9rem 1.2rem; }
+  .draft header { margin-bottom: 0.65rem; }
+  .draft blockquote { font-size: 1.1rem; line-height: 1.4; }
+  .draftNote { padding-top: 0.65rem; font-size: 0.95rem; }
+  .checks section { padding: 0.75rem 1.1rem; }
+  .checks p { margin-top: 0.4rem; }
+  .score > strong { font-size: 2.1rem; }
+  .delivery { padding: 0.8rem 1.2rem; margin-top: 1rem; }
+  .delivery::before { height: 1rem; }
+  .delivery blockquote { font-size: 1.1rem; }
+}
+@media (max-width: 63.99rem) {
+  .message { display: block; }
+  .message blockquote { margin-top: 0.35rem; }
+  .paths { grid-template-columns: 1fr; gap: 1rem; }
+  .fork { margin: 0 15%; }
+  .fork::after { display: none; }
+  .fork span { font-size: 0; }
+  .fork span::after { content: "Companion drafting + Jev user check run in parallel"; font-size: 0.8rem; }
+  .draftArrow { display: none; }
+  .delivery { grid-template-columns: 1fr; gap: 0.8rem; }
+  .delivery::before { right: 50%; }
+  .draft blockquote { font-size: 1.15rem; }
+}

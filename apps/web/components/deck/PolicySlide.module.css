@@ -1,0 +1,43 @@
+.content { display: flex; flex-direction: column; gap: 0.8rem; }
+.example { background: #eeeee5; color: #344334; overflow: hidden; }
+.message { padding: 0.55rem 1rem; color: #6b755f; font-size: 0.95rem; }
+.message span { color: #354332; margin-left: 0.4rem; font-family: var(--deck-serif); font-size: 1.1rem; font-style: italic; }
+.chain { display: grid; grid-template-columns: 1.1fr 0.9fr 1.1fr; }
+.chain section { position: relative; padding: 0.85rem 1rem; }
+.chain section + section { border-left: 1px solid #cbd0bf; }
+.chain section:nth-child(2) { background: #e3e9dc; }
+.chain h2 { display: flex; gap: 0.55rem; align-items: center; font-size: 0.95rem; color: #56694d; font-weight: 550; }
+.chain h2 > span { font-family: var(--deck-serif); font-style: italic; font-size: 1.25rem; color: #285bbb; }
+.chain p { margin-top: 0.5rem; font-size: 1.1rem; line-height: 1.35; }
+.chain .answer { display: flex; align-items: center; gap: 1rem; }
+.answer strong { font-family: var(--deck-serif); font-size: 2.65rem; line-height: 1; letter-spacing: -0.04em; color: #285bbb; font-weight: 400; }
+.answer > span { font-size: 0.85rem; color: #566d51; }
+.chain .rule { font-family: var(--font-geist-mono), monospace; font-size: 1.3rem; }
+.rule > span { color: #a6443c; font-weight: 550; }
+.chain .explain { margin-top: 0.2rem; font-size: 0.9rem; color: #65765d; }
+.table table { font-size: 1.05rem; }
+.table table :is(th, td) { padding-top: 0.55rem; padding-bottom: 0.55rem; }
+.table table caption { padding-top: 0.55rem; padding-bottom: 0.55rem; font-size: 0.92rem; }
+.table .intentRow { background: #edf3fd; }
+.intentRow > th { box-shadow: inset 3px 0 #4e7cc7; font-weight: 550; }
+.result { display: grid; grid-template-columns: 1.2fr 1fr; gap: 1rem; align-items: center; padding: 0.75rem 0; font-size: 1rem; line-height: 1.5; color: #5a6a54; }
+.result strong { color: #253d5f; font-weight: 600; }
+.order { white-space: nowrap; color: #384e6d; }
+.order > span { color: #91a0b5; margin: 0 0.15rem; }
+.decision { padding-left: 1rem; border-left: 2px solid #d78888; }
+.decision strong { color: #a8393e; }
+.decision > span { display: block; font-size: 0.9rem; }
+@media (min-width: 64rem) and (max-height: 800px) {
+  .content { gap: 0.6rem; }
+  .answer strong { font-size: 2.4rem; }
+  .chain section { padding-top: 0.6rem; padding-bottom: 0.6rem; }
+  .table table :is(th, td) { padding-top: 0.2rem; padding-bottom: 0.2rem; }
+  .result { padding-top: 0.5rem; padding-bottom: 0.5rem; font-size: 0.95rem; }
+}
+@media (max-width: 63.99rem) {
+  .chain { grid-template-columns: 1fr; }
+  .chain section + section { border-left: 0; border-top: 1px solid #819dc333; }
+  .result { grid-template-columns: 1fr; }
+  .decision { padding-top: 0.7rem; padding-left: 0; border-left: 0; border-top: 1px solid #e7dada; }
+  .table table :is(th, td) { padding-top: 0.7rem; padding-bottom: 0.7rem; }
+}

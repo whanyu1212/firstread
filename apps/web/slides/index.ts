@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import Motivation from "./pitch-00-motivation.mdx";
 import Intervention from "./pitch-01-intervention.mdx";
 import Requirements from "./pitch-02-requirements.mdx";
 import Comparison from "./pitch-03-comparison.mdx";
@@ -21,11 +22,12 @@ export interface SlideMeta {
   steps: number;
 }
 
-/** Eight slides on the design and evidence, then detailed references for Q&A. */
+/** Nine slides on the motivation, design and evidence, then detailed references for Q&A. */
 export const SLIDES: (SlideMeta & { Content: ComponentType })[] = [
-  { title: "One conversation, two checks", act: "Walkthrough", steps: 0, Content: Intervention },
+  { title: "Why this project", act: "Walkthrough", steps: 0, Content: Motivation },
   { title: "Checking every turn", act: "Walkthrough", steps: 0, Content: Requirements },
   { title: "Why Jev", act: "Walkthrough", steps: 0, Content: Comparison },
+  { title: "One conversation, two checks", act: "Walkthrough", steps: 0, Content: Intervention },
   { title: "Questions to risk levels", act: "Walkthrough", steps: 0, Content: Policy },
   { title: "Where the checks run", act: "Walkthrough", steps: 0, Content: Runtime },
   { title: "Risk across turns", act: "Walkthrough", steps: 0, Content: Memory },

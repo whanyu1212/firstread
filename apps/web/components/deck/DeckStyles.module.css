@@ -1,0 +1,121 @@
+.shell { --deck-deep: #222622; --deck-blue: #285bbb; --deck-paper: #f7f5ef; --deck-border: #cecfc6; --deck-radius: 0; --deck-shadow: none; --deck-serif: Georgia, "Times New Roman", serif; display: flex; flex-direction: column; min-height: 100dvh; color: #242824; }
+.backdrop { position: fixed; inset: 0; z-index: -1; pointer-events: none; background: #f7f5ef; }
+.harness { padding-top: 0.8rem; background: repeating-linear-gradient(90deg, transparent 0, transparent calc(10% - 1px), #2e65b306 10%); }
+.jevBar { background: #386ab9; }
+.companionBar { background: #bac2b1; }
+.slide { display: flex; flex: 1; flex-direction: column; justify-content: center; width: 100%; max-width: 1360px; margin: 0 auto; padding: 2.7rem 3rem 2.2rem; }
+.frame { display: flex; flex-direction: column; gap: 1.65rem; }
+.chapter, .appendixLabel { display: flex; align-items: center; gap: 0.2rem; margin-bottom: 1.2rem; padding-bottom: 0.7rem; color: #545e58; font-family: var(--font-geist-mono), monospace; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.chapter::before, .appendixLabel::before { content: ""; width: 1.35rem; height: 2px; margin-right: 0.6rem; background: var(--deck-blue); }
+.title { max-width: 32ch; font-family: var(--deck-serif); font-size: clamp(2.5rem, 3.65vw, 3.6rem); line-height: 1.07; font-weight: 400; letter-spacing: -0.045em; text-wrap: balance; }
+.intro { max-width: 62em; margin-top: 1rem; color: #60675f; font-size: 1.2rem; line-height: 1.5; }
+.note { position: relative; max-width: 78em; padding-top: 0.9rem; color: #646a62; font-size: 1rem; line-height: 1.5; }
+.message { padding: 0.75rem 1.15rem; border: 1px solid #d4e0f4; border-left: 3px solid #477ace; border-radius: 0 0.75rem 0.75rem 0; background: #edf3fe; color: #304f7b; font-size: 1.25rem; line-height: 1.4; }
+.constraints { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); counter-reset: constraint; gap: 1.1rem; }
+.constraint { display: flex; flex-direction: column; gap: 1rem; padding: 1.4rem 1.5rem 1.1rem 0; background: transparent; }
+.constraint h2 { font-family: var(--deck-serif); font-size: 1.85rem; font-weight: 400; letter-spacing: -0.03em; }
+.constraint h2::before { counter-increment: constraint; content: "0" counter(constraint); display: block; margin-bottom: 1.1rem; font-family: var(--deck-serif); font-style: italic; font-weight: 400; font-size: 3rem; line-height: 1; letter-spacing: -0.07em; color: var(--deck-blue); }
+.constraint p { font-size: 1.15rem; line-height: 1.55; }
+.constraint p:last-child { margin-top: auto; padding-top: 1rem; color: #616b60; }
+.comparison { display: grid; grid-template-columns: 1.5fr 1fr; gap: 1.5rem; }
+.comparisonTable { min-width: 0; overflow-x: auto; background: transparent; padding: 1rem 0; }
+.comparisonTable caption { margin-bottom: 0.8rem; font-size: 1rem; color: #66748a; }
+.comparisonTable th, .comparisonTable td { padding: 0.8rem 0.8rem; }
+.comparisonTable tbody tr { border-bottom: 1px solid #e5eaf1; }
+.comparisonTable tbody tr:last-child { border: 0; }
+.comparisonTable .jevRow { background: #e6ebdf; color: #242824; border-color: transparent; }
+.jevRow th:first-child { border-radius: 0; }
+.jevRow td:last-child { border-radius: 0; }
+.latencyBar { display: block; height: 100%; background: #9baec9; transform-origin: left; }
+.jevRow .latencyBar { background: var(--deck-blue); }
+.insight { display: flex; flex-direction: column; justify-content: center; gap: 1rem; padding: 0.5rem 0 0.5rem 2rem; color: #434d43; }
+.insight h2 { color: var(--deck-blue); font-family: var(--deck-serif); font-size: 1.7rem; font-style: italic; font-weight: 400; }
+.insight > p { font-size: 1.22rem; line-height: 1.5; }
+.insight > p:last-child { padding-top: 0.85rem; font-size: 1rem; color: #656e63; }
+.insight strong { color: #222b24; font-weight: 600; }
+.policyTable { overflow-x: auto; background: #ffffff55; }
+.policyTable caption { color: #5c6e87; font-size: 1rem; }
+.policyTable thead { background: #edeee7; }
+.policyTable tbody th { color: #33465f; }
+.policyTable tbody tr:nth-child(even) { background: #f1f2eb; }
+.escalation { padding: 0.75rem 1.15rem; border: 1px solid #eecfcb; border-radius: 0.75rem; background: #fff4f1; color: #8a3834; font-size: 1.15rem; line-height: 1.4; }
+.duo { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; }
+.duo > section { padding: 1.5rem 0; background: transparent; }
+.duo h2 { font-family: var(--deck-serif); font-size: 1.85rem; line-height: 1.2; font-weight: 400; letter-spacing: -0.03em; }
+.duo p, .duo ul { font-size: 1.2rem; line-height: 1.55; }
+.duo > .protect { color: #3d503d; }
+.duo > .caution { color: #625246; }
+.protect h2 { color: #36563b; }
+.caution h2 { color: #82583d; }
+.duo > .demonstrate { color: #273a40; }
+.demonstrate ul { color: #4e5c53; }
+.demonstrate a { border-radius: 0; background: #263d37; color: #fff; }
+.demonstrate a:hover { background: #34534b; }
+.duo ul { list-style: none; }
+.duo li { position: relative; padding-left: 1rem; }
+.duo li::before { content: ""; position: absolute; left: 0; top: 0.65em; width: 4px; height: 4px; border-radius: 50%; background: #739aca; }
+.unresolved strong { color: #2c4f80; }
+.figure { background: #ffffff40; padding: 1.55rem 0; }
+.figureInset { padding: 0.65rem; }
+.footer { padding: 0 1.5rem 1rem; }
+.footerBar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1.25rem; padding: 0.65rem 0; border-top: 1px solid #bfc6b9; background: transparent; font-size: 0.85rem; }
+.navButton { display: grid; place-items: center; width: 1.9rem; height: 1.9rem; border: 1px solid #c7cec0; color: #405441; background: transparent; }
+.navButton:hover { background: #e8eddf; }
+.navButton:disabled { opacity: 0.3; }
+.appendixLabel { margin-bottom: 1.7rem; }
+.appendixLabel > span { margin: 0 0.65rem; color: #477ace; }
+.appendixNumber { font-family: var(--font-geist-mono), monospace; font-size: 0.8rem; border-left: 1px solid #b7c1b0; padding: 0.15rem 0.6rem; }
+.appendixText > h1 { font-family: var(--deck-serif); font-size: clamp(2.6rem, 3.6vw, 3.55rem); font-weight: 400; line-height: 1.08; letter-spacing: -0.045em; margin-bottom: 1.25rem; }
+.appendixText > p, .appendixText > :global(.points) { font-size: 1.28rem; line-height: 1.55; color: #52617a; }
+.appendixText > :global(.points) > li { margin-left: 0; padding-left: 1.1rem; list-style: none; }
+.appendixText strong { color: #28456b !important; }
+.wide { display: flex; flex-direction: column; gap: 1.8rem; }
+.split { min-width: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .frameHeader > * { animation: settle 650ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .frameHeader h1 { animation-delay: 60ms; }
+  .intro { animation-delay: 110ms; }
+  .frame > :not(header) { animation: settle 700ms 170ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .constraint, .duo > section { animation: settle 700ms 220ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .constraint:nth-child(2), .duo > section:nth-child(2) { animation-delay: 310ms; }
+  .constraint:nth-child(3) { animation-delay: 400ms; }
+  .latencyBar { animation: measure 900ms 250ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+}
+@keyframes settle { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes measure { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@media (min-width: 64rem) and (max-height: 800px) {
+  .slide { padding-top: 0.8rem; padding-bottom: 0.8rem; }
+  .footer { padding-bottom: 0.5rem; }
+  .frame { gap: 0.85rem; }
+  .chapter { margin-bottom: 0.75rem; padding-bottom: 0.35rem; }
+  .title { font-size: 2.7rem; }
+  .intro { margin-top: 0.85rem; font-size: 1.12rem; line-height: 1.4; }
+  .note { font-size: 0.91rem; padding-top: 0.6rem; }
+  .constraint { padding: 1.05rem 1.3rem; }
+  .constraint p { font-size: 1.05rem; }
+  .policyTable table { font-size: 1.05rem; }
+  .policyTable :is(th, td) { padding-top: 0.55rem; padding-bottom: 0.55rem; }
+  .policyTable caption { padding-top: 0.6rem; padding-bottom: 0.6rem; font-size: 0.92rem; }
+  .duo > section { padding: 1.3rem; }
+  .duo p, .duo ul { font-size: 1.1rem; }
+  .figure { padding: 1.2rem; }
+  .appendixLabel { margin-bottom: 1rem; padding-bottom: 0.2rem; }
+  .appendixText > h1 { font-size: 2.7rem; }
+  .appendixText > p, .appendixText > :global(.points) { font-size: 1.15rem; }
+  .wide { gap: 1.25rem; }
+}
+@media (max-width: 63.99rem) {
+  .slide { padding: 2rem 1.4rem; }
+  .constraints, .comparison, .duo { grid-template-columns: 1fr; }
+  .insight { padding: 1.2rem 0; }
+  .constraint { gap: 0.7rem; }
+  .constraint h2::before { display: inline; margin-right: 0.75rem; }
+  .title { font-size: 2.55rem; }
+  .intro { font-size: 1.15rem; }
+  .note { font-size: 0.95rem; }
+  .figure { padding: 1.1rem; }
+  .footer { padding: 0 0.75rem 0.75rem; }
+  .footerBar { gap: 0.6rem 1rem; }
+  .comparisonTable { padding: 0.8rem; }
+  .comparisonTable th, .comparisonTable td { padding: 0.65rem 0.45rem; font-size: 1rem; }
+}

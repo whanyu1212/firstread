@@ -1,0 +1,94 @@
+.scene { position: relative; isolation: isolate; padding: 1.35rem 1.5rem 0.5rem; background: #eeeee5; }
+.scene::before { content: none; }
+.caption, .caption > span:first-child, .cardHeading, .cardHeading h2, .sceneFooter { display: flex; align-items: center; }
+.caption { justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; font-size: 0.8rem; color: #455e4b; }
+.caption > span:first-child { gap: 0.5rem; font-weight: 500; }
+.captionDot { width: 1rem; height: 2px; background: #386ab9; }
+.illustrative { font-size: 0.62rem; font-family: var(--font-geist-mono), monospace; letter-spacing: 0.03em; text-transform: uppercase; }
+.message { margin: 1.25rem 0 1rem; }
+.eyebrow { font-size: 0.73rem; color: #697861; }
+.message p { margin-top: 0.25rem; font-family: var(--editorial-serif); font-style: italic; font-size: 1.4rem; letter-spacing: -0.03em; color: #354a3e; }
+.parallelLabel { display: flex; justify-content: center; align-items: center; gap: 0.55rem; font-size: 0.75rem; font-weight: 600; color: #435b7e; }
+.parallelLabel > span, .nextStage b, .stepNumber { font-family: var(--font-geist-mono), monospace; font-size: 0.65rem; font-weight: 400; opacity: 0.7; }
+.split { position: relative; height: 1.55rem; margin: 0 25%; }
+.split::before { content: ""; position: absolute; top: 0.15rem; left: 50%; height: 0.65rem; border-left: 1px solid #789cc6; }
+.split::after { content: ""; position: absolute; top: 0.8rem; bottom: 0; inset-inline: 0; border: 1px solid #789cc6; border-bottom: 0; border-radius: 0.3rem 0.3rem 0 0; }
+.split i { position: absolute; bottom: -2px; z-index: 1; width: 4px; height: 4px; border-radius: 50%; background: #5d8bd2; }
+.split i:first-child { left: -1px; }
+.split i:last-child { right: -1px; }
+.parallel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.8rem; }
+.lane { display: flex; flex-direction: column; min-width: 0; padding: 1rem; }
+.laneLabel { color: #67755f; font-size: 0.68rem; }
+.lane h2 { margin-top: 0.3rem; font-size: 1rem; font-weight: 600; letter-spacing: -0.02em; }
+.draft { background: #faf9f4; }
+.userCheck { background: #e3e9e5; color: #294f70; }
+.userCheck .laneLabel { color: #48669a; }
+.activity { height: 2px; margin-top: 0.8rem; background: #dee5ee; overflow: hidden; }
+.activity > span { display: block; height: 100%; background: #93a3b8; transform-origin: left; }
+.reading { background: #cbd9f2; }
+.reading > span { background: #5081d6; }
+.lane blockquote, .lane > p { margin: 0.8rem 0 1rem; font-size: 0.86rem; line-height: 1.5; }
+.draft blockquote { font-family: var(--editorial-serif); font-size: 1rem; line-height: 1.4; color: #56634f; }
+.userCheck > p { color: #42618f; }
+.held, .risk { align-self: flex-start; margin-top: auto; font-size: 0.7rem; line-height: 1.35; }
+.held { color: #697461; }
+.risk { padding: 0.22rem 0; color: #914f30; }
+.nextStage { position: relative; display: flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 2.5rem; font-size: 0.73rem; color: #4a6080; }
+.nextStage b { margin-right: 0.35rem; }
+.draftConnector { position: absolute; left: 25%; color: #789cc6; }
+.riskConnector { position: absolute; left: 75%; height: 100%; border-left: 1px dashed #9eafd0; }
+.nextStage > span:nth-child(2) { position: relative; z-index: 1; padding: 0.2rem 0.5rem; background: #eeeee5; }
+.checkpoint { position: relative; isolation: isolate; overflow: hidden; padding: 1rem 1.3rem; background: #e1e8df; color: #304834; }
+.checkpointGlow { display: none; }
+.checkpoint::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 2px; background: #678b65; transform-origin: top; }
+.replyCheck, .policy { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.replyCheck h2 { font-size: 0.93rem; font-weight: 600; }
+.replyCheck p { margin-top: 0.25rem; font-size: 0.85rem; color: #596f50; }
+.checkTag { font-size: 0.67rem; color: #58714d; white-space: nowrap; }
+.policy { margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid #c6d0bd; }
+.policy h3 { font-size: 0.72rem; font-weight: 500; color: #546c49; }
+.policy p { margin-top: 0.25rem; font-size: 0.78rem; line-height: 1.45; color: #627556; }
+.replace, .sent { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; gap: 0.4rem; min-height: 1.7rem; padding: 0.25rem 0.55rem; font-size: 0.72rem; line-height: 1; }
+.replace { background: #f1f3eb; color: #3f5f3d; }
+.deliveryConnector { display: grid; place-items: center; height: 1.4rem; color: #789cc6; }
+.delivered { padding: 1.1rem 1.3rem; background: #faf9f4; }
+.cardHeading { justify-content: space-between; gap: 0.5rem; }
+.cardHeading h2 { gap: 0.55rem; font-size: 0.93rem; font-weight: 600; letter-spacing: -0.01em; }
+.delivered blockquote { margin-top: 0.75rem; font-family: var(--editorial-serif); font-size: 1.15rem; line-height: 1.4; color: #354a3e; }
+.sent { color: #3d6848; }
+.sent > span { display: inline-grid; place-items: center; width: 1rem; height: 1rem; }
+.resources { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.85rem; font-size: 0.78rem; font-weight: 500; color: #496b43; }
+.excerpt { display: block; margin-top: 0.45rem; font-size: 0.65rem; color: #738076; }
+.sceneFooter { justify-content: space-between; gap: 1rem; min-height: 2.8rem; color: #67775e; font-size: 0.68rem; }
+.sceneFooter button { display: inline-flex; align-items: center; gap: 0.4rem; min-height: 2.8rem; padding: 0 0.45rem; cursor: pointer; font-size: 0.75rem; }
+.sceneFooter button:hover { color: #165aca; background: #ffffff70; }
+.sceneFooter button > span { font-size: 1rem; }
+@media (prefers-reduced-motion: no-preference) {
+  .message { animation: arrive 500ms ease-out both; }
+  .parallelLabel, .split { animation: arrive 450ms 150ms ease-out both; }
+  .draft, .userCheck { animation: arrive 600ms 350ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .drafting > span { animation: trace-x 1000ms 500ms ease-out both; }
+  .reading > span { animation: trace-x 650ms 500ms ease-out both; }
+  .nextStage, .checkpoint { animation: arrive 600ms 1500ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .checkpoint::after { animation: trace 650ms 1800ms ease-out both; }
+  .deliveryConnector, .delivered { animation: arrive 650ms 2250ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .sent > span { animation: seal 350ms 2650ms ease-out both; }
+  .sceneFooter button { transition: background 180ms, color 180ms; }
+}
+@keyframes arrive { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes trace { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes trace-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes seal { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@media (max-width: 40rem) {
+  .scene { padding: 1.1rem 0.9rem 0.3rem;  }
+  .caption { gap: 0.3rem 0.75rem; }
+  .message { padding-left: 0; }
+  .parallel { gap: 0.55rem; }
+  .lane { padding: 0.8rem; }
+  .laneLabel { font-size: 0.65rem; min-height: 2.7em; }
+  .lane h2 { font-size: 0.9rem; }
+  .lane blockquote, .lane > p { font-size: 0.81rem; }
+  .checkpoint, .delivered { padding: 1rem; }
+  .nextStage > span:nth-child(2) { font-size: 0.68rem; }
+  .checkTag { display: none; }
+}
