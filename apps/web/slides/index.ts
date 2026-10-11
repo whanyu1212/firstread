@@ -1,35 +1,39 @@
 import type { ComponentType } from "react";
-import Cover from "./00-cover.mdx";
-import Problem from "./01-problem.mdx";
-import Requirements from "./02-requirements.mdx";
+import Intervention from "./pitch-01-intervention.mdx";
+import Requirements from "./pitch-02-requirements.mdx";
+import Comparison from "./pitch-03-comparison.mdx";
+import Policy from "./pitch-04-policy.mdx";
+import Runtime from "./pitch-05-runtime.mdx";
+import Memory from "./pitch-06-memory.mdx";
+import Learning from "./pitch-07-learning.mdx";
+import Limits from "./pitch-08-limits.mdx";
 import WhyJev from "./03-why-jev.mdx";
 import AnswersToLevel from "./04-answers-to-level.mdx";
 import Harness from "./05-harness.mdx";
 import Iterations from "./06-iterations.mdx";
 import Honest from "./07-honest.mdx";
-import Live from "./08-live.mdx";
 
 export interface SlideMeta {
   title: string;
-  /** Where the slide sits in the talk; null for the cover. */
   act: string | null;
-  /** Build steps after the slide's first state: the highest `at` on that slide. */
+  appendix?: boolean;
+  /** Highest build step on the slide; the main pitch has no hidden builds. */
   steps: number;
 }
 
-const ACT_1 = "Act 1, the pain point";
-const ACT_2 = "Act 2, the process";
-const ACT_3 = "Act 3, the result";
-
-/** Slide order. The full outline (3 acts, ~12 slides) is in Linear HY-24; Act 2 is HY-168. */
+/** Eight slides on the design and evidence, then detailed references for Q&A. */
 export const SLIDES: (SlideMeta & { Content: ComponentType })[] = [
-  { title: "What would Jev do?", act: null, steps: 0, Content: Cover },
-  { title: "The problem", act: ACT_1, steps: 2, Content: Problem },
-  { title: "What the check needs", act: ACT_1, steps: 3, Content: Requirements },
-  { title: "Why Jev", act: ACT_1, steps: 2, Content: WhyJev },
-  { title: "Jev's answers to a level", act: ACT_2, steps: 3, Content: AnswersToLevel },
-  { title: "Jev in the harness", act: ACT_2, steps: 4, Content: Harness },
-  { title: "The iteration loop", act: ACT_2, steps: 3, Content: Iterations },
-  { title: "Staying honest", act: ACT_2, steps: 4, Content: Honest },
-  { title: "One conversation, replayed", act: ACT_3, steps: 1, Content: Live },
+  { title: "One conversation, two checks", act: "Walkthrough", steps: 0, Content: Intervention },
+  { title: "Checking every turn", act: "Walkthrough", steps: 0, Content: Requirements },
+  { title: "Why Jev", act: "Walkthrough", steps: 0, Content: Comparison },
+  { title: "Questions to risk levels", act: "Walkthrough", steps: 0, Content: Policy },
+  { title: "Where the checks run", act: "Walkthrough", steps: 0, Content: Runtime },
+  { title: "Risk across turns", act: "Walkthrough", steps: 0, Content: Memory },
+  { title: "What testing changed", act: "Walkthrough", steps: 0, Content: Learning },
+  { title: "Current limits", act: "Walkthrough", steps: 0, Content: Limits },
+  { title: "Model comparison", act: "Appendix", appendix: true, steps: 2, Content: WhyJev },
+  { title: "Signals and policy", act: "Appendix", appendix: true, steps: 3, Content: AnswersToLevel },
+  { title: "Inside the harness", act: "Appendix", appendix: true, steps: 4, Content: Harness },
+  { title: "Iteration history", act: "Appendix", appendix: true, steps: 3, Content: Iterations },
+  { title: "Evaluation limits", act: "Appendix", appendix: true, steps: 4, Content: Honest },
 ];

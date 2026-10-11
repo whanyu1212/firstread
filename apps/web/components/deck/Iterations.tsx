@@ -44,8 +44,9 @@ const LABEL = [
   { dx: 14, dy: -10, anchor: "start" },
 ] as const;
 
-export function Iterations() {
-  const step = useStep();
+export function Iterations({ complete = false }: { complete?: boolean }) {
+  const currentStep = useStep();
+  const step = complete ? steps.length : currentStep;
   const t = useTransition();
   const [hover, setHover] = useState<number | null>(null);
   const { positive, negative } = last.cases;
@@ -56,16 +57,31 @@ export function Iterations() {
     <figure
       aria-label={`SI and self-harm messages caught at ELEVATED or above, against no-risk messages flagged: ${steps.map((s) => `${s.change}, ${pct(s.recall)} caught, ${pct(s.falseAlarms)} flagged`).join("; ")}.`}
     >
+      {complete && (
+        <div className="mb-4 grid gap-5 border-b border-line pb-4 sm:grid-cols-2">
+          <div>
+            <p className="text-lg font-semibold">Risk messages caught <span className="font-normal text-muted">(recall)</span></p>
+            <p className="mt-2 text-3xl font-semibold tabular-nums text-accent">{pct(first.recall)} → {pct(last.recall)}</p>
+            <p className="mt-1 text-fig text-muted">{points(last.recall - first.recall)} percentage points · higher is better</p>
+          </div>
+          <div>
+            <p className="text-lg font-semibold">No-risk messages incorrectly flagged</p>
+            <p className="mt-2 text-3xl font-semibold tabular-nums text-level-crisis">{pct(first.falseAlarms)} → {pct(last.falseAlarms)}</p>
+            <p className="mt-1 text-fig text-muted">{points(last.falseAlarms - first.falseAlarms)} percentage points · more false alarms</p>
+          </div>
+        </div>
+      )}
       <div className="grid items-start gap-x-10 gap-y-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         <div>
-          <p className="mb-2 text-xl leading-snug">
+          {!complete && <p className="mb-2 text-xl leading-snug">
             <span className="font-semibold">{pct(now.recall)} of real risk caught</span>
             <span className="text-muted">
               {now === first
                 ? `, with ${pct(first.falseAlarms)} of no-risk messages flagged.`
                 : `: ${points(now.recall - first.recall)} points, for ${points(now.falseAlarms - first.falseAlarms)} points of false alarms.`}
             </span>
-          </p>
+          </p>}
+          {complete && <p className="mb-2 text-fig text-muted">Up = more risk caught. Right = more false alarms.</p>}
           <svg viewBox={`0 0 ${W} ${H}`} className="w-full" aria-hidden="true">
             {Y_TICKS.map((v) => (
               <g key={`y${v}`}>
@@ -95,7 +111,7 @@ export function Iterations() {
               textAnchor="middle"
               className="fill-muted text-[16px]"
             >
-              Real risk caught, from {Y_MIN}%
+              Risk messages caught, from {Y_MIN}%
             </text>
 
             {steps.slice(1).map((s, i) => {
@@ -170,28 +186,24 @@ export function Iterations() {
                   <span className="text-lg font-semibold text-series-1">{i + 1}</span>
                   <div>
                     <p className="leading-snug">
-                      <span className="block text-lg font-semibold">{s.change}</span>
-                      <span className="block font-mono text-fig whitespace-nowrap">
-                        <span className="font-semibold">{pct(s.recall)}</span>
-                        <span className="text-muted">
-                          {" "}
-                          · {pct(s.falseAlarms)} flagged
-                          {prev && ` (${points(s.falseAlarms - prev.falseAlarms)})`}
-                        </span>
-                      </span>
+                      <span className="block text-lg font-semibold">{i === 0 ? "Starting policy" : s.change}</span>
                     </p>
                     <p className="text-fig leading-snug text-muted">
-                      {s.miss}{" "}
-                      <span className="font-mono whitespace-nowrap">
+                      {i > 0 && <span className="font-medium text-ink">Miss addressed: </span>}{s.miss}{" "}
+                      {!complete && <span className="font-mono whitespace-nowrap">
                         {s.commit} · {day(s.date)}
-                      </span>
+                      </span>}
+                    </p>
+                    <p className="mt-1 text-fig tabular-nums">
+                      <span className="font-semibold">{pct(s.recall)} caught</span>
+                      <span className="text-muted"> · {pct(s.falseAlarms)} false alarms{!complete && prev && ` (${points(s.falseAlarms - prev.falseAlarms)})`}</span>
                     </p>
                   </div>
                 </motion.li>
               );
             })}
           </ol>
-          <motion.figcaption
+          {!complete && <motion.figcaption
             className="mt-4 text-fig text-muted"
             initial={false}
             animate={{ opacity: step >= 1 ? 1 : 0 }}
@@ -199,7 +211,7 @@ export function Iterations() {
           >
             BHH test split ({positive.toLocaleString("en")} at risk, {negative.toLocaleString("en")} not), at ELEVATED or above. Each run
             rescored with the policy at its commit.
-          </motion.figcaption>
+          </motion.figcaption>}
         </div>
       </div>
     </figure>

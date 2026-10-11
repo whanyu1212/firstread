@@ -36,7 +36,7 @@ const s = (ms: number) => `${(ms / 1000).toFixed(ms < 1000 ? 2 : 1)}s`;
 
 type Steps = { at: number; draftAt: number; outcomesAt: number; deadlineAt: number };
 
-export function Harness({ at: first, draftAt, outcomesAt, deadlineAt }: Steps) {
+export function Harness({ at: first, draftAt, outcomesAt, deadlineAt, timelineOnly = false }: Steps & { timelineOnly?: boolean }) {
   const step = useStep();
   const t = useTransition();
   const show = { check: step >= first, reply: step >= draftAt, outcomes: step >= outcomesAt, deadline: step >= deadlineAt };
@@ -98,7 +98,7 @@ export function Harness({ at: first, draftAt, outcomesAt, deadlineAt }: Steps) {
         </Row>
       </div>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-hidden="true">
+      {!timelineOnly && <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-hidden="true">
         <Appear show={show.outcomes}>
           <Outcome title="The draft, as written">Both checks pass.</Outcome>
         </Appear>
@@ -116,7 +116,7 @@ export function Harness({ at: first, draftAt, outcomesAt, deadlineAt }: Steps) {
             down” in the demo.
           </Outcome>
         </Appear>
-      </div>
+      </div>}
 
       <motion.figcaption
         className="mt-4 text-fig text-muted"
