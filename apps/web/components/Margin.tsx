@@ -51,11 +51,11 @@ export function NowSummary({ risk, check, audit, pending = false, waiting = fals
   risk: ChatData["risk"] | undefined;
   check?: ChatData["check"];
   audit?: ChatData["audit"];
+  /** The latest turn is still waiting for its own risk state, even if its audit has arrived. */
   pending?: boolean;
   waiting?: boolean;
 }) {
   const unavailable = assessmentUnavailable(check, audit);
-  const assessing = pending && !audit;
   const assessmentNotice = (
     <div role="status">
       <p className={`font-semibold ${unavailable ? "text-danger" : "text-muted"}`}>
@@ -68,7 +68,7 @@ export function NowSummary({ risk, check, audit, pending = false, waiting = fals
       </p>
     </div>
   );
-  const showAssessment = unavailable || assessing;
+  const showAssessment = unavailable || pending;
   if (!risk && showAssessment) return assessmentNotice;
   if (!risk && waiting) {
     return <p className="text-muted">The level appears once FirstRead has read the first message.</p>;

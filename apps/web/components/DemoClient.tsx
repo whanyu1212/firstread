@@ -62,6 +62,8 @@ export function DemoClient({ serverKey }: { serverKey: boolean }) {
     .find(Boolean);
   // Use this turn's result: an older failed assessment must not leak into a new turn or replay.
   const latestReply = rows.at(-1)?.reply;
+  // The route streams audit before risk. Only this turn's risk part completes its summary.
+  const latestTurnRisk = latestReply && dataPart(latestReply, "risk");
 
   // Keep the latest turn in view as messages and notes come in.
   useEffect(() => {
@@ -94,7 +96,7 @@ export function DemoClient({ serverKey }: { serverKey: boolean }) {
                 risk={latestRisk}
                 check={latestReply && dataPart(latestReply, "check")}
                 audit={latestReply && dataPart(latestReply, "audit")}
-                pending={chat.busy}
+                pending={chat.busy && !latestTurnRisk}
                 waiting
               />
             </div>
