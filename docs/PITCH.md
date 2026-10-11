@@ -1,69 +1,73 @@
-# FirstRead: three-minute pitch
+# FirstRead: design walkthrough
 
-This script follows the six-slide main deck at `/deck/1` through `/deck/6`. The appendix at `/deck/7` through `/deck/11` is for questions, not part of the timed talk.
+The main deck is `/deck/1` through `/deck/8`. It follows a question, a design choice, and its evidence. The detailed appendix is `/deck/9` through `/deck/13`.
 
-## Timed script
+Use the three-minute script for a timed submission. In a conversation with judges, allow five to six minutes: pause on the comparison, policy rules, and iteration chart rather than rushing the reasoning. There are no hidden builds in the main deck; the appendix keeps its step-by-step diagrams.
 
-### 0:00–0:22 — Slide 1: empathy is not enough
+## Three-minute route
 
-“A companion can sound caring and still miss a safety obligation. In this recorded example, it acknowledges pain and asks a thoughtful follow-up. But FirstRead assesses elevated risk, so our policy also requires support resources. FirstRead checks every turn before anyone sees the answer.”
+### 0:00–0:25 — One conversation, two checks
 
-### 0:22–0:55 — Slide 2: the reply that actually went out
+“FirstRead checks the user message and the companion’s draft before delivery. Here is a recorded synthetic turn. The draft is empathetic, but FirstRead reads elevated risk, where our policy also requires support resources. The draft lacks them, so it is replaced. Whether this opener deserved elevated risk is itself a question we need to evaluate.”
 
-“This is a genuine recorded turn. The user said, ‘everything feels pointless lately.’ Jev read elevated risk while the companion drafted, then checked that draft. Its support-resource score was 0.08, below the required 0.50, so FirstRead chose `replace`. The draft stayed hidden; a support reply went out. The user check took 1.55 seconds alongside the 3.92-second draft; the reply check added 0.44.”
+### 0:25–0:43 — What checking every turn demands
 
-### 0:55–1:20 — Slide 3: why Jev
+“Checking every turn creates three constraints: latency, cost, and scores we can use. We overlap the user check with generation, measure its cost separately, and ask specific questions. We choose cutoffs from observed errors; a score of 0.3 is not a clinical probability.”
 
-“That is why Jev fits. We ask fourteen structured yes-or-no questions about the user message and four about the draft. Its probabilities become explicit, testable policy. The user check starts beside draft generation and is usually finished first; only the reply check sits after the draft.”
+### 0:43–1:03 — Why Jev
 
-### 1:20–1:47 — Slide 4: memory and failure behavior
+“We compared five models on the same questions. Jev had the highest AUC, but GLM was close: 0.976 against 0.992. GLM’s median check took about three times as long, with a higher recorded cost. That makes Jev a useful fit, while leaving calibration and clinical reliability unresolved.”
 
-“Safety has to survive one turn. FirstRead carries forward the conversation’s risk and earlier signals. One calm message cannot erase a crisis; only a person can clear it. If Jev is slow, unavailable, or rate-limited, FirstRead fails closed: it withholds the unchecked draft, sends a cautious reply matched to known risk, records the failure, and can recheck later.”
+### 1:03–1:22 — Scores aren’t decisions
 
-### 1:47–2:20 — Slide 5: evidence, with limits
+“On the next recorded turn, intent, imminence, and preparation cross explicit thresholds. The policy chooses CRISIS and stops generation. Keeping that decision in code lets us trace a miss back to the question, the score, or the rule. These thresholds remain choices we have to test.”
 
-“On the Between Help and Harm test split, Jev reached 0.992 AUC on the 1,750-message scored subset. Latency across all 2,044 messages was 0.50 seconds median and 0.67 at p90. The recorded estimate is four cents per thousand Jev user checks, not the whole app. Test labels are model-generated, the reply check lacks its own labelled evaluation, and this is not clinically validated.”
+### 1:22–1:43 — Where the checks run
 
-### 2:20–3:00 — Slide 6: working proof of concept and next steps
+“This timeline is the first actual recorded turn. The user check finishes during drafting; the reply check adds about 0.44 seconds. Both checks have a three-second deadline from the draft being ready. On failure, we withhold the draft and use a fallback. The missing assessment is still missing.”
 
-“The proof of concept works end to end: draft, checks, decision, safe reply, audit, and a recorded escalation event.”
+### 1:43–2:05 — Why risk needs memory
 
-> **Recorded demo cue — 20 seconds.** Open `/demo`, choose the recommended **See FirstRead intervene** scenario, and play or skip through the recorded run. Say: “This recording used the real pipeline, Jev checks, and timings.” Point out the draft replacement on turn one, then the CRISIS short-circuit and recorded handoff event on turn two. Do not call it a live run.
+“A risk ledger preserves earlier concern, and one calm message cannot erase a crisis. But persistence can amplify a mistaken assessment. Five held-out conversations exceeded their labelled ceiling, and one that should escalate was missed. We need better initial readings and recovery behavior without losing sensitivity.”
 
-“The demo records that event, but nobody is on call and no human is alerted. Next we connect a staffed escalation destination, build a labelled reply-safety evaluation, and test the workflow with human reviewers. FirstRead is the safety layer; people remain the escalation path.”
+### 2:05–2:27 — What improved, and what it cost
 
-## Appendix routes
+“Testing exposed weak signals that added up and preparation without explicit intent. Adding questions and rules raised recall from 88.1 to 96 percent, but false alarms rose from 1.5 to 3.5 percent. These are historical snapshots, not proof that each change was an unqualified improvement.”
 
-| Route | Use when asked about | Evidence shown |
-| --- | --- | --- |
-| `/deck/7` | Why Jev instead of a general model? | ROC, latency, and cost comparison from the BHH runs |
-| `/deck/8` | How do probabilities become an action? | Jev answers mapped through policy to a risk level |
-| `/deck/9` | Where does the check sit in the product? | The harness: user check beside drafting, reply check before delivery, fail-closed deadline |
-| `/deck/10` | How was the policy improved? | Miss-driven iterations: 88.1% → 95.4% → 96.0% recall, with false alarms also shown |
-| `/deck/11` | What remains unproven? | Honest limits: over-escalation, no labelled reply-check eval, no fallback classifier, no staffed demo escalation |
+### 2:27–3:00 — What works, what remains unresolved
+
+“We can inspect the full intervention. The next work is labelled reply evaluation, conversation recovery, and an actual human response workflow. Today’s demo records escalation events; it does not alert a staffed team.”
+
+> **Recorded demo cue — allow roughly 15 seconds.** Preload `/demo` in a separate tab and select **See FirstRead intervene**. Show the saved first-turn draft replacement and the second-turn CRISIS short-circuit, using the replay controls to skip ahead if needed. Call it a recording of the real pipeline, not a live request. Return to slide 8 for questions.
 
 ## Rehearsal notes
 
-- Target about 140 spoken words per minute. The script has roughly 350 spoken words; the 20-second recording and short slide transitions bring the total to three minutes.
-- Load `/demo` before presenting. Keep the recorded recommended scenario selected. Recordings need no API key and should be described as recorded; reserve “live” for a typed run that is actually calling the services.
-- On slide 2, pause on the three states: companion draft → `replace` decision → delivered support reply. The first turn is ELEVATED, not CRISIS.
-- On slide 6, the CRISIS turn stops the companion, sends the crisis reply in about 0.42 seconds, and writes a handoff event. It does not notify a staffed team.
-- If time is short, keep the caveats on slide 5 and shorten the demo commentary, rather than skipping the distinction between a recorded event and human escalation.
+- Rehearse the timing; the script is roughly 370 words plus a short demo. For a strict three-minute slot, preload the recording so navigation does not consume the demo window.
+- On slide 1, the recorded assessment is ELEVATED. Do not present that as a clinical finding or proof that the classification is correct. The example demonstrates how the policy changes a reply.
+- On slide 3, explain what the comparison supports: model choice for this check. AUC uses 1,750 self-harm/no-risk messages; latency uses all 2,044 shared messages. Test labels are model-generated. The cost estimate covers Jev user checks only, excluding the companion and reply check.
+- On slide 4, the shown rules are selected matching rules. Others also fire. The cutoff values come from the current policy, and the scores come from the saved run.
+- On slide 6, keep the small synthetic holdout results as counts. Do not turn them into population-level reliability claims.
+- On slide 7, the later test-miss fix is outside the historical iteration numbers. Distinguish those historical false-alarm rates from the current model-comparison operating point.
+- For the longer walkthrough, pause on the question: what evidence would justify changing a cutoff or allowing risk to settle sooner?
 
-## Q&A evidence notes
+## Appendix routes
 
-- **What exactly was measured?** AUC used 1,750 of the 2,044 BHH test messages, excluding 294 other-crisis messages. Latency used all 2,044 messages. At a 5% false-alarm rate, Jev recalled 96% of self-harm messages.
-- **What does the cost mean?** `$0.04 per 1,000` is the recorded estimate for Jev user checks from eval token usage and list price. It excludes the companion model, the reply check, storage, network, and application operations.
-- **Are the labels clinical ground truth?** No. BHH validation labels are human-labelled, but the reported test split labels were produced by a majority of three gpt-4o-mini runs. FirstRead’s questions are loosely Columbia-style and are not a validated clinical instrument.
-- **Does CRISIS alert someone today?** The runtime creates and stores a handoff record when the level first reaches CRISIS. The public demo has no staffed recipient; the reply says this explicitly. Connecting, acknowledging, and auditing a real human workflow is future integration work.
-- **What happens during an outage?** After the draft is ready, both checks have a three-second deadline. On timeout, rate limit, or service failure, the draft is withheld and a level-appropriate fallback is sent. There is no fallback classifier, so an unread message can remain unassessed until recheck.
-- **What is the largest evaluation gap?** The reply check has no labelled evaluation of its own. Conversation tests are small synthetic sets that expose patterns and misses, not a basis for clinical or population-level claims.
+| Route | Question | Detail |
+| --- | --- | --- |
+| `/deck/9` | How do the models compare across thresholds? | Full ROC and latency charts, with scoring-interface caveats |
+| `/deck/10` | How do all the rules work? | Signals, cutoffs, and conversation-state walkthrough |
+| `/deck/11` | How does the harness deliver a reply? | Step-by-step timing, outcomes, and deadline |
+| `/deck/12` | Which changes produced those results? | Iteration chart, saved-run provenance, and commit references |
+| `/deck/13` | What could bias the evaluation? | Split discipline, historical caveats, and remaining gaps |
 
-## Claim sources
+## Evidence and boundaries
 
-- `README.md` — benchmark scope, latency, cost, limitations, data handling, and demo boundary
-- `apps/web/slides/data/bhh.json` — 2,044 total messages; 519 positive and 1,231 negative scored cases; AUC and latency
-- `apps/web/slides/data/replay-crisis.json`, turn 0 — the draft, replacement, delivered reply, signals, and timings; turn 1 — CRISIS short-circuit and handoff record
-- `packages/firstread/src/guard.ts` and `packages/firstread/src/risk.ts` — deadline, fail-closed behavior, remembered risk, recheck, and human-only CRISIS clearing
-- `apps/web/lib/turn.ts` and `apps/web/lib/handoff.ts` — CRISIS short-circuit, stored handoff event, and the public demo’s explicit no-one-on-call wording
-- `packages/firstread/evals/fetch-bhh.ts` and `packages/firstread/evals/llm-client.ts` — test-label source and the Jev price used for recorded estimates
+- `README.md`: benchmark scope, cost basis, conversation holdout counts, label provenance, and limitations.
+- `apps/web/slides/data/bhh.json`: model AUC and measured latency. Jev’s median is 503 ms, GLM’s 1,562 ms; displayed values are rounded.
+- `apps/web/slides/data/replay-crisis.json`: genuine saved draft, delivered reply, signals, and timings. These are synthetic messages, not user research or clinical cases.
+- `apps/web/slides/data/iterations.json`: historical recall, false alarms, and policy commits.
+- `packages/firstread/src/policy.ts`: explicit rules and thresholds. The presentation reads the selected matching rules from `levelEvidence`.
+- `packages/firstread/src/guard.ts` and `risk.ts`: deadlines, fallback behavior, ledger, settling, and explicit CRISIS clearing.
+- `apps/web/lib/turn.ts` and `handoff.ts`: generation short-circuit and stored handoff event. There is no staffed recipient in the public demo.
+
+The reply check has no independent labelled evaluation. The questions and thresholds are not a validated clinical instrument. A benchmark, a runnable integration, and an inspectable audit each answer different questions; none substitutes for evaluating the actual response workflow.

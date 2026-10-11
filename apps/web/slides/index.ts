@@ -1,10 +1,12 @@
 import type { ComponentType } from "react";
-import Problem from "./pitch-01-problem.mdx";
-import Intervention from "./pitch-02-intervention.mdx";
-import Architecture from "./pitch-03-architecture.mdx";
-import Continuity from "./pitch-04-continuity.mdx";
-import Evidence from "./pitch-05-evidence.mdx";
-import Next from "./pitch-06-next.mdx";
+import Intervention from "./pitch-01-intervention.mdx";
+import Requirements from "./pitch-02-requirements.mdx";
+import Comparison from "./pitch-03-comparison.mdx";
+import Policy from "./pitch-04-policy.mdx";
+import Runtime from "./pitch-05-runtime.mdx";
+import Memory from "./pitch-06-memory.mdx";
+import Learning from "./pitch-07-learning.mdx";
+import Limits from "./pitch-08-limits.mdx";
 import WhyJev from "./03-why-jev.mdx";
 import AnswersToLevel from "./04-answers-to-level.mdx";
 import Harness from "./05-harness.mdx";
@@ -19,14 +21,16 @@ export interface SlideMeta {
   steps: number;
 }
 
-/** Six pitch slides, then optional evidence for Q&A. */
+/** Eight slides on the design and evidence, then detailed references for Q&A. */
 export const SLIDES: (SlideMeta & { Content: ComponentType })[] = [
-  { title: "The problem", act: "Pitch", steps: 0, Content: Problem },
-  { title: "The intervention", act: "Pitch", steps: 0, Content: Intervention },
-  { title: "Why Jev", act: "Pitch", steps: 0, Content: Architecture },
-  { title: "Beyond one message", act: "Pitch", steps: 0, Content: Continuity },
-  { title: "The evidence", act: "Pitch", steps: 0, Content: Evidence },
-  { title: "The working POC", act: "Pitch", steps: 0, Content: Next },
+  { title: "One conversation, two checks", act: "Walkthrough", steps: 0, Content: Intervention },
+  { title: "Checking every turn", act: "Walkthrough", steps: 0, Content: Requirements },
+  { title: "Why Jev", act: "Walkthrough", steps: 0, Content: Comparison },
+  { title: "Scores and decisions", act: "Walkthrough", steps: 0, Content: Policy },
+  { title: "Where the checks run", act: "Walkthrough", steps: 0, Content: Runtime },
+  { title: "Risk across turns", act: "Walkthrough", steps: 0, Content: Memory },
+  { title: "What testing changed", act: "Walkthrough", steps: 0, Content: Learning },
+  { title: "Current limits", act: "Walkthrough", steps: 0, Content: Limits },
   { title: "Model comparison", act: "Appendix", appendix: true, steps: 2, Content: WhyJev },
   { title: "Signals and policy", act: "Appendix", appendix: true, steps: 3, Content: AnswersToLevel },
   { title: "Inside the harness", act: "Appendix", appendix: true, steps: 4, Content: Harness },

@@ -44,8 +44,9 @@ const LABEL = [
   { dx: 14, dy: -10, anchor: "start" },
 ] as const;
 
-export function Iterations() {
-  const step = useStep();
+export function Iterations({ complete = false }: { complete?: boolean }) {
+  const currentStep = useStep();
+  const step = complete ? steps.length : currentStep;
   const t = useTransition();
   const [hover, setHover] = useState<number | null>(null);
   const { positive, negative } = last.cases;

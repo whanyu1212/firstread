@@ -1,131 +1,200 @@
 import Link from "next/link";
+import { levelEvidence } from "firstread/policy";
 import type { ReactNode } from "react";
+import bhh from "@/slides/data/bhh.json";
 import crisis from "@/slides/data/replay-crisis.json";
+import { Glass } from "./Glass";
+import { Harness } from "./Harness";
+import { Iterations } from "./Iterations";
 
 const turn = crisis.turns[0]!;
-const label = "text-fig font-medium uppercase tracking-[0.12em] text-muted";
+const crisisTurn = crisis.turns[1]!;
+const evidence = levelEvidence(crisisTurn.data.audit.userSignals!);
+const jev = bhh.runs.find((run) => run.id === "jev")!;
+const glm = bhh.runs.find((run) => run.id === "glm")!;
+const label = "text-fig font-medium text-muted";
 const body = "text-xl leading-relaxed sm:text-2xl";
+const seconds = (ms: number) => `${(ms / 1000).toFixed(2)}s`;
 
-function Frame({ chapter, title, children, note }: { chapter: string; title: ReactNode; children: ReactNode; note?: ReactNode }) {
+function Frame({ chapter, title, intro, children, note }: {
+  chapter: string; title: string; intro?: ReactNode; children: ReactNode; note?: ReactNode;
+}) {
   return (
-    <div className="space-y-8 lg:space-y-10">
+    <div className="space-y-7 lg:space-y-8">
       <header>
-        <p className={`${label} mb-5`}>FirstRead <span className="mx-3 text-accent">/</span> {chapter}</p>
-        <h1 className="max-w-[22ch] text-4xl leading-[1.06] font-semibold tracking-[-0.035em] sm:text-6xl lg:text-7xl">{title}</h1>
+        <p className={`${label} mb-4`}>FirstRead <span className="mx-3 text-accent">/</span> {chapter}</p>
+        <h1 className="max-w-[28ch] text-4xl leading-[1.08] font-semibold tracking-[-0.03em] sm:text-5xl lg:text-6xl">{title}</h1>
+        {intro && <p className="mt-5 max-w-[54em] text-xl leading-relaxed text-ink/80">{intro}</p>}
       </header>
       {children}
-      {note && <p className="max-w-5xl text-fig leading-relaxed text-muted">{note}</p>}
+      {note && <p className="relative max-w-5xl text-fig leading-relaxed text-muted">{note}</p>}
     </div>
-  );
-}
-
-export function PitchProblem() {
-  return (
-    <Frame chapter="The problem" title={<>A caring reply can still<br className="max-sm:hidden" /> miss a safety obligation.</>} note="FirstRead is a safety layer for AI companions, powered by Jev. It checks the conversation and the draft before a reply reaches the user.">
-      <div className="grid gap-8 lg:grid-cols-[1.1fr_1fr] lg:gap-16">
-        <blockquote className="border-l-4 border-accent py-3 pl-7">
-          <p className={`${label} mb-4`}>A message from the recorded demo</p>
-          <p className="text-3xl leading-snug sm:text-4xl">“{turn.user}”</p>
-        </blockquote>
-        <div className="border-t border-ink/15 pt-5">
-          <p className={body}>The companion responds with empathy.</p>
-          <p className={`${body} mt-3 font-semibold`}>But at elevated risk, our policy also requires support resources.</p>
-          <p className="mt-5 text-xl text-muted">Who checks that before the reply is sent?</p>
-        </div>
-      </div>
-    </Frame>
   );
 }
 
 export function PitchIntervention() {
   return (
-    <Frame chapter="The intervention" title="See the reply FirstRead changed." note="A saved synthetic run, not a live request. The draft is verbatim; the delivered reply is excerpted. ELEVATED is this run’s policy assessment, not a diagnosis.">
-      <p className="text-xl text-muted">User: <span className="text-ink">“{turn.user}”</span></p>
-      <div className="grid gap-7 lg:grid-cols-[1.2fr_0.85fr_1fr]">
-        <section className="border-t-2 border-ink/20 pt-5">
-          <h2 className={label}>01 / Companion draft</h2>
-          <blockquote className="mt-5 text-xl leading-relaxed">“{turn.draft}”</blockquote>
+    <Frame chapter="The starting point" title="One conversation, two checks"
+      intro="FirstRead reads the person’s message and the companion’s draft before delivery. This saved turn shows why checking the reply matters as well as detecting risk."
+      note="A recorded synthetic turn. The draft is verbatim; the delivered reply is excerpted. ELEVATED is the system’s assessment, not a diagnosis. Whether this opener warrants that level is part of the evaluation problem.">
+      <blockquote className="border-l-2 border-accent pl-5 text-2xl">“{turn.user}”</blockquote>
+      <div className="grid gap-7 lg:grid-cols-[1.2fr_0.9fr_1fr]">
+        <section className="border-t border-ink/20 pt-5">
+          <h2 className={label}>The companion’s draft</h2>
+          <blockquote className="mt-4 text-xl leading-relaxed">“{turn.draft}”</blockquote>
         </section>
         <section className="border-t-2 border-level-elevated pt-5">
-          <h2 className={label}>02 / FirstRead decision</h2>
-          <p className="mt-5 text-3xl font-semibold">Replace</p>
-          <p className="mt-3 text-xl leading-relaxed">Elevated risk.<br />Support resources missing.</p>
-          <p className="mt-5 text-fig text-muted">The draft stays private.</p>
+          <h2 className={label}>The two checks</h2>
+          <p className="mt-4 text-xl leading-relaxed">The user check reads <strong>ELEVATED</strong>. At that level, our policy requires support resources.</p>
+          <p className="mt-4 text-xl leading-relaxed">The draft scores <strong>{turn.data.audit.replySignals!.offers_support_resources.toFixed(2)}</strong> for offering resources, below the 0.50 cutoff.</p>
         </section>
         <section className="border-t-2 border-accent pt-5">
-          <h2 className={label}>03 / Delivered reply</h2>
-          <blockquote className="mt-5 text-xl leading-relaxed">“{turn.reply.split(". ")[0]}. …”</blockquote>
-          <p className="mt-4 text-xl font-medium text-accent">+ configured support contacts</p>
+          <h2 className={label}>The resulting action: replace</h2>
+          <blockquote className="mt-4 text-xl leading-relaxed">“{turn.reply.split(". ")[0]}. …”</blockquote>
+          <p className="mt-4 text-xl text-accent">The delivered reply includes configured support contacts.</p>
         </section>
       </div>
-      <Link href="/demo" target="_blank" rel="noreferrer" className="inline-flex rounded-full bg-ink px-6 py-3 text-lg font-medium text-white hover:bg-ink/80">Open recorded demo ↗<span className="sr-only"> (new tab)</span></Link>
     </Frame>
   );
 }
 
-export function PitchArchitecture() {
+export function PitchRequirements() {
+  const rows = [
+    ["Latency", "The check sits in front of every reply.", "Read the user while the companion drafts. Check the reply before releasing it."],
+    ["Cost", "Checking only a sample would leave turns unchecked.", "Use a small structured check on every turn; measure its cost separately from generation."],
+    ["Useful scores", "A binary flag gives us little room to tune the policy.", "Ask specific questions, then choose cutoffs from measured recall and false alarms."],
+  ];
   return (
-    <Frame chapter="Why Jev" title="Small, structured checks. A decision before delivery." note="Jev scores 14 user-risk questions in one call. A second call checks the draft. The application’s policy chooses the action; Jev does not generate the companion’s reply.">
-      <div className="grid items-stretch gap-6 lg:grid-cols-[1.2fr_auto_1fr_auto_0.8fr]">
-        <div className="space-y-4">
-          <p className={label}>Run in parallel</p>
-          <div className="rounded-2xl border border-ink/10 bg-white/60 p-5"><p className="text-2xl font-semibold">Companion writes</p><p className="mt-2 text-xl text-muted">Draft held back from the user</p></div>
-          <div className="rounded-2xl border border-accent/25 bg-accent/5 p-5"><p className="text-2xl font-semibold text-accent">Jev reads the risk</p><p className="mt-2 text-xl text-muted">Structured yes/no scores</p></div>
+    <Frame chapter="Design constraints" title="What checking every turn demands"
+      intro="The check needs to fit the conversation, and its decisions need to be explainable when they are wrong."
+      note="A score is not a clinical probability. Jev’s mid-range scores run low on this benchmark; we use them to rank evidence and tune cutoffs, rather than reading 0.3 as a 30% chance of harm.">
+      <div className="divide-y divide-ink/15 border-y border-ink/15">
+        {rows.map(([name, constraint, response]) => (
+          <section key={name} className="grid gap-4 py-6 lg:grid-cols-[0.55fr_1fr_1.15fr] lg:gap-8">
+            <h2 className="text-2xl font-semibold">{name}</h2>
+            <p className="text-xl leading-relaxed">{constraint}</p>
+            <p className="text-xl leading-relaxed text-muted">{response}</p>
+          </section>
+        ))}
+      </div>
+    </Frame>
+  );
+}
+
+export function PitchComparison() {
+  return (
+    <Frame chapter="Choosing the judge" title="Why Jev, given those constraints?"
+      intro="We asked five models the same user-risk questions. Jev had the highest AUC in this run; the closest alternative was GLM. Speed and cost help explain the choice."
+      note="Between Help and Harm (BHH) test split: AUC uses 1,750 self-harm / no-risk messages; latency uses all 2,044 shared messages. Test labels are model-generated. Models use different scoring interfaces; full ROC curves and methodology are in the appendix.">
+      <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr] lg:gap-12">
+        <div className="overflow-x-auto">
+          <table className="w-full text-lg tabular-nums">
+            <caption className="mb-4 text-left text-fig text-muted">Single-message classification and observed median latency</caption>
+            <thead><tr className="border-b border-ink/20 text-muted"><th className="pb-3 text-left font-normal" scope="col">Model</th><th className="pb-3 text-right font-normal" scope="col">AUC</th><th className="pb-3 pl-5 text-right font-normal" scope="col">Median check</th></tr></thead>
+            <tbody>{[...bhh.runs].sort((a, b) => b.auc - a.auc).map((run) => (
+              <tr key={run.id} className={`border-b border-ink/10 ${run.id === "jev" ? "font-semibold text-accent" : ""}`}>
+                <th scope="row" className="py-3 pr-4 text-left font-medium">{run.name}</th>
+                <td className="text-right">{run.auc.toFixed(3)}</td>
+                <td className="py-3 pl-5"><div className="flex items-center justify-end gap-3"><span className="hidden h-1.5 w-24 bg-ink/5 sm:block" aria-hidden="true"><span className="block h-full bg-accent/65" style={{ width: `${run.latency.p50 / 8000 * 100}%` }} /></span><span className="w-16 text-right">{seconds(run.latency.p50)}</span></div></td>
+              </tr>
+            ))}</tbody>
+          </table>
         </div>
-        <span className="self-center text-3xl text-muted max-lg:hidden" aria-hidden="true">→</span>
-        <div className="self-center border-l-2 border-accent py-4 pl-6"><p className={label}>Before delivery</p><h2 className="mt-4 text-3xl font-semibold">Check the draft.<br />Apply the policy.</h2><p className="mt-4 text-xl text-muted">Risk + reply obligations</p></div>
-        <span className="self-center text-3xl text-muted max-lg:hidden" aria-hidden="true">→</span>
-        <ul className="space-y-4 self-center text-2xl font-medium"><li>Send</li><li>Replace</li><li>Escalate</li></ul>
+        <div className="space-y-5 border-l-2 border-accent pl-6">
+          <h2 className="text-2xl font-semibold">The close comparison</h2>
+          <p className={body}>GLM reaches <strong>{glm.auc.toFixed(3)} AUC</strong>, against Jev’s {jev.auc.toFixed(3)}.</p>
+          <p className="text-xl leading-relaxed">Its median check takes <strong>{(glm.latency.p50 / jev.latency.p50).toFixed(1)}× as long</strong>. Recorded cost estimates are $0.21 versus $0.04 per 1,000 user checks.</p>
+          <p className="text-fig leading-relaxed text-muted">Those costs exclude the companion and reply check. Jev’s scores still need policy calibration; the comparison does not establish clinical reliability.</p>
+        </div>
       </div>
-      <p className={body}><strong className="text-accent">CRISIS takes the fast path:</strong> stop generation and deliver the crisis reply.</p>
     </Frame>
   );
 }
 
-export function PitchContinuity() {
+export function PitchPolicy() {
   return (
-    <Frame chapter="Beyond one message" title="Risk persists. Missing checks never mean “safe”." note="Implemented policy behavior. ELEVATED can settle to WATCH after several calm turns; CRISIS requires explicit human clearance. The POC emits escalation events but does not contact a staffed response team.">
-      <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
-        <section className="border-t border-ink/20 pt-6">
-          <h2 className="text-2xl font-semibold">Remember the conversation</h2>
-          <div className="my-7 flex flex-wrap items-center gap-4 text-lg"><span className="rounded-full bg-level-elevated/15 px-4 py-2">Elevated risk</span><span aria-hidden="true">→</span><span>One calm message</span></div>
-          <p className="text-3xl font-semibold">Risk stays elevated.</p>
-          <p className="mt-4 text-xl leading-relaxed text-muted">A risk ledger carries earlier evidence forward. One reassuring turn cannot erase it.</p>
+    <Frame chapter="From answers to action" title="Scores aren’t decisions"
+      intro="Jev answers specific questions. FirstRead applies explicit rules, keeps conversation state, and chooses what can be delivered. The cutoffs are code we can inspect and change."
+      note="Selected matching rules from the second recorded turn; other rules also fire. The highest matching level wins. These cutoffs are tuned policy choices, not validated clinical thresholds.">
+      <blockquote className="border-l-2 border-accent pl-5 text-2xl">“{crisisTurn.user}”</blockquote>
+      <div className="grid gap-8 lg:grid-cols-[1.1fr_1fr] lg:gap-14">
+        <div>
+          <h2 className={`${label} mb-4`}>Jev’s answer → the rule in code</h2>
+          <dl className="divide-y divide-ink/15 border-y border-ink/15">
+            {evidence.answers.filter((answer) => ["intent", "imminent", "preparation"].includes(answer.signal)).map((answer) => (
+              <div key={answer.signal} className="flex items-center justify-between gap-4 py-4 text-xl"><dt className="capitalize">{answer.signal === "imminent" ? "Acting soon" : answer.signal}</dt><dd className="font-mono">{answer.value.toFixed(2)} ≥ {answer.cutoff.toFixed(2)}</dd></div>
+            ))}
+          </dl>
+          <p className="mt-4 text-fig text-muted">Score on the left; configured cutoff on the right.</p>
+        </div>
+        <div className="border-l-2 border-level-crisis pl-6">
+          <h2 className="text-3xl font-semibold">{evidence.level} → escalate</h2>
+          <p className="mt-5 text-xl leading-relaxed">Stop the companion’s generation, send the crisis reply, and emit a handoff event.</p>
+          <p className="mt-5 text-xl leading-relaxed text-muted">Keeping this decision in code makes a miss traceable: was the question wrong, the score low, or the rule too strict?</p>
+        </div>
+      </div>
+    </Frame>
+  );
+}
+
+export function PitchRuntime() {
+  return (
+    <Frame chapter="The runtime" title="Where the checks run"
+      intro="The user check overlaps with generation. The reply check adds time after the draft is ready. This timeline uses the first recorded turn, not benchmark medians."
+      note="If a check fails or misses the deadline, withhold the draft and use a fallback matched to known risk. That prevents unchecked delivery; it does not recover the missing assessment. Failed turns can be rechecked later.">
+      <Glass><Harness at={0} draftAt={0} outcomesAt={0} deadlineAt={0} timelineOnly /></Glass>
+    </Frame>
+  );
+}
+
+export function PitchMemory() {
+  return (
+    <Frame chapter="Across turns" title="Why risk needs memory—and how it can get stuck"
+      intro="A calm message should not erase an earlier disclosure. But remembering a mistaken assessment can also make later replies unnecessarily cautious."
+      note="Current conversation evaluation: 37 synthetic conversations for development, 21 held out. In holdout, 5 conversations exceeded their labelled ceiling and 1 of 12 that should escalate was missed. These small sets expose failure patterns; they are not clinical validation.">
+      <div className="grid gap-10 lg:grid-cols-2 lg:gap-14">
+        <section className="border-t-2 border-accent pt-5">
+          <h2 className="text-2xl font-semibold">What persistence protects</h2>
+          <p className="mt-5 text-xl leading-relaxed">A risk ledger carries concerning messages beyond the recent-message window. Weak signals can accumulate across turns.</p>
+          <p className="mt-5 text-xl leading-relaxed">ELEVATED settles only after sustained calm and a low score. CRISIS requires explicit human clearance.</p>
         </section>
-        <section className="border-t border-ink/20 pt-6">
-          <h2 className="text-2xl font-semibold">Handle a missing assessment</h2>
-          <div className="my-7 flex flex-wrap items-center gap-4 text-lg"><span className="rounded-full bg-ink/5 px-4 py-2">Jev unavailable</span><span aria-hidden="true">→</span><span>Draft withheld</span></div>
-          <p className="text-3xl font-semibold">Deliver a fallback reply.</p>
-          <p className="mt-4 text-xl leading-relaxed text-muted">Use the risk already known, mark the failed check, and preserve the turn for re-checking.</p>
+        <section className="border-t-2 border-level-elevated pt-5">
+          <h2 className="text-2xl font-semibold">What persistence can amplify</h2>
+          <p className="mt-5 text-xl leading-relaxed">A joke or concern about a friend can be read too severely. Once raised, the conversation’s level stays high by design.</p>
+          <p className="mt-5 text-xl leading-relaxed font-medium">The next task is to reduce those initial misreadings and test recovery, while preserving sensitivity to real risk.</p>
         </section>
       </div>
     </Frame>
   );
 }
 
-export function PitchEvidence() {
+export function PitchLearning() {
   return (
-    <Frame chapter="The evidence" title="Strong single-message results. Clear limits." note="Between Help and Harm (BHH) test split. AUC: 1,750 self-harm / no-risk messages. Latency: all 2,044 shared messages. Labels are model-generated; this is not clinical validation. Cost is a recorded estimate for Jev user checks, excluding companion generation and reply checks.">
-      <div className="grid gap-7 sm:grid-cols-3">
-        {[
-          ["0.992", "AUC", "Self-harm vs. no risk"],
-          ["0.50s", "Median user check", "0.67s at the 90th percentile"],
-          ["$0.04", "Per 1,000 user checks", "Recorded benchmark estimate"],
-        ].map(([value, title, detail]) => <section key={title} className="border-t-2 border-accent pt-6"><p className="text-5xl font-semibold tracking-tight text-accent sm:text-6xl">{value}</p><h2 className="mt-4 text-2xl font-medium">{title}</h2><p className="mt-2 text-lg text-muted">{detail}</p></section>)}
-      </div>
-      <div className="border-t border-ink/15 pt-6"><p className={body}>The remaining challenge: <strong>conversation-level over-escalation.</strong></p><p className="mt-3 text-xl text-muted">Reply checking still needs an independent labelled evaluation.</p></div>
+    <Frame chapter="The iteration loop" title="What improved, and what it cost"
+      intro="Some misses involved weak signals that added up; others involved preparation without explicit intent. Adding questions and rules improved recall, while also increasing false alarms."
+      note="Historical policy snapshots, rescored on saved BHH test runs. Recall at ELEVATED or above rose 7.9 percentage points; false alarms rose 2.0 points. A later fix inspected a test miss, so these figures predate that change.">
+      <Glass><Iterations complete /></Glass>
     </Frame>
   );
 }
 
-export function PitchNext() {
+export function PitchLimits() {
   return (
-    <Frame chapter="The working POC" title="A safety decision you can inspect and test." note="A developer prototype for AI companions. Human response operations and clinical validation are not part of this POC.">
-      <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
-        <section className="border-t-2 border-accent pt-6"><h2 className={label}>Working today</h2><p className="mt-5 text-3xl leading-snug font-medium">A runnable harness.<br />An inspectable decision.<br />A replayable intervention.</p><p className="mt-5 text-xl leading-relaxed text-muted">User and reply checks, remembered risk, crisis short-circuiting, and fallbacks.</p></section>
-        <section className="border-t border-ink/20 pt-6"><h2 className={label}>Next milestones</h2><ol className="mt-5 space-y-4 text-xl leading-relaxed"><li><span className="mr-4 font-mono text-accent">01</span>Evaluate replies and reduce over-escalation.</li><li><span className="mr-4 font-mono text-accent">02</span>Connect escalation to a human response workflow.</li><li><span className="mr-4 font-mono text-accent">03</span>Package a companion integration example.</li></ol></section>
+    <Frame chapter="The current boundary" title="What works, and what remains unresolved"
+      intro="The demo lets us follow a turn from the draft through the checks, decision, and delivered reply. That makes the behavior inspectable; it does not establish that the judgments are reliable enough for deployment."
+      note="The public demo is not a support service. It records escalation events but does not alert a staffed team. The questions and thresholds are not a validated clinical instrument.">
+      <div className="grid gap-10 lg:grid-cols-2 lg:gap-14">
+        <section className="border-t border-ink/20 pt-5">
+          <h2 className="text-2xl font-semibold">What we can demonstrate</h2>
+          <ul className="mt-5 space-y-4 text-xl leading-relaxed"><li>A real draft replaced after a reply check.</li><li>A crisis turn stopping generation early.</li><li>Remembered risk and explicit outage handling.</li></ul>
+          <Link href="/demo" target="_blank" rel="noreferrer" className="mt-6 inline-flex rounded-xl bg-ink px-5 py-3 text-lg font-medium text-white hover:bg-ink/80">Explore the recorded demo ↗<span className="sr-only"> (new tab)</span></Link>
+        </section>
+        <section className="border-t border-ink/20 pt-5">
+          <h2 className="text-2xl font-semibold">What needs testing next</h2>
+          <ul className="mt-5 space-y-4 text-xl leading-relaxed"><li><strong>Reply judgments:</strong> build an independent labelled evaluation.</li><li><strong>Conversation behavior:</strong> reduce over-escalation and test recovery.</li><li><strong>Human escalation:</strong> connect and evaluate an actual response workflow.</li></ul>
+          <Link href="/deck/9" className="mt-6 inline-block text-lg text-accent hover:underline">Detailed evidence and policy appendix →</Link>
+        </section>
       </div>
-      <div className="flex flex-wrap items-center gap-6"><Link href="/demo" className="rounded-full bg-ink px-6 py-3 text-lg font-medium text-white hover:bg-ink/80">Try FirstRead →</Link><Link href="/deck/7" className="text-lg font-medium text-accent hover:underline">Explore the evidence appendix →</Link></div>
     </Frame>
   );
 }
