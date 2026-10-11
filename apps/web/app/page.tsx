@@ -51,7 +51,7 @@ const SHOWING = [
   {
     question: "How does Jev fit into an agent harness?",
     title: "It sits in front of every reply.",
-    body: "The user check runs while the companion writes its draft. The draft is then sent, replaced with a reply that points to support, or escalated to a person. If Jev doesn't answer in time, the draft isn't sent.",
+    body: "The user check runs while the companion writes its draft. The policy sends the draft, replaces it with a reply that points to support, or emits an escalation event for the host app. If Jev doesn't answer in time, the draft isn't sent.",
   },
 ];
 
@@ -60,7 +60,7 @@ const LINKS = [
   {
     href: "/demo",
     title: "Try the demo",
-    body: "Chat with the companion and watch FirstRead check every turn. You'll need your own OpenAI API key.",
+    body: "Watch recorded scenarios without an API key, or bring an OpenAI API key to try a live conversation.",
   },
 ];
 
@@ -75,32 +75,38 @@ export default function Home() {
             href={EVENT_URL}
             target="_blank"
             rel="noreferrer"
-            className="glass rounded-2xl px-4 py-1.5 text-sm transition-colors hover:bg-white/80 sm:rounded-full"
+            className="rounded-full border border-ink/10 bg-white/60 px-3 py-1.5 text-xs text-ink/75 transition-colors hover:bg-white sm:text-sm"
           >
-            Built for <span className="font-semibold">What Would Jev Do?</span>, AdaL's online hackathon, October
-            6–11, 2026
+            Built for <span className="font-semibold">What Would Jev Do?</span>
           </a>
         </header>
 
-        <section className="mt-14 grid items-center gap-10 lg:mt-20 lg:grid-cols-[minmax(0,13fr)_minmax(0,12fr)]">
-          <div>
-            <h1 className="text-4xl leading-[1.05] font-semibold tracking-[-0.03em] sm:text-6xl lg:text-5xl xl:text-6xl">
-              What would Jev do?
-              <br />
-              Read every turn first.
+        <section className="mt-12 grid items-center gap-10 lg:mt-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-12" aria-labelledby="hero-title">
+          <div className="lg:pb-6">
+            <p className="mb-5 text-sm font-medium text-ink/75">A safety layer for AI companions</p>
+            <h1 id="hero-title" className="text-[2.75rem] leading-[1.06] font-semibold tracking-[-0.045em] sm:text-6xl lg:text-[3.5rem] xl:text-[3.75rem]">
+              <span className="block">Read the risk.</span>
+              <span className="block">Check the reply.</span>
+              <span className="mt-2 block text-balance text-accent">Before it reaches the user.</span>
             </h1>
-            <p className="mt-6 max-w-[34em] text-xl leading-relaxed">
-              FirstRead is a safety layer that reads every turn of a mental health companion.
+            <p className={`mt-6 max-w-[29em] text-lg leading-relaxed ${ON_GLOW}`}>
+              FirstRead adds two Jev checks to your mental health companion: one reads the user’s message, the other checks the draft.
+              A policy that remembers risk across turns decides what gets sent.
             </p>
-            <p className={`mt-4 max-w-[34em] text-lg leading-relaxed ${ON_GLOW}`}>
-              A companion agent talks to people at their most vulnerable. Before any reply goes out, FirstRead checks
-              the person's message for signs of self-harm risk, and the companion's draft in case it ignores the risk
-              or makes it worse.
+            <div className="mt-7 flex flex-col gap-3 min-[420px]:flex-row min-[420px]:flex-wrap">
+              <Link href="/demo" className="inline-flex min-h-12 items-center justify-center gap-6 rounded-xl bg-ink px-5 py-3 font-medium text-white transition-colors hover:bg-ink/85">
+                Watch the demo <span aria-hidden="true">↗</span>
+              </Link>
+              <Link href="/deck/1" className="inline-flex min-h-12 items-center justify-center gap-6 rounded-xl border border-ink/15 bg-white/70 px-5 py-3 font-medium transition-colors hover:bg-white">
+                Explore the evidence <span aria-hidden="true">→</span>
+              </Link>
+            </div>
+            <p className="mt-3 text-sm text-ink/75">No API key needed for recorded scenarios.</p>
+            <p className="mt-8 max-w-[30em] border-l-2 border-accent/30 pl-4 text-sm leading-relaxed text-ink/75">
+              Send a checked reply. Replace an unsafe draft. Emit an escalation event when human support is needed.
             </p>
           </div>
-          <div className="glass rounded-[24px] p-3">
-            <TurnPreview />
-          </div>
+          <TurnPreview />
         </section>
 
         <section className="mt-20 lg:mt-28" aria-labelledby="numbers">
@@ -152,7 +158,7 @@ export default function Home() {
         </section>
 
         <footer className={`mt-16 border-t border-ink/10 pt-6 text-sm ${ON_GLOW}`}>
-          FirstRead flags risk and routes conversations to people. It doesn't diagnose, and it isn't a replacement for
+          FirstRead flags risk and emits escalation events for the host app to handle. It doesn't diagnose, and it isn't a replacement for
           human crisis support.
         </footer>
       </main>
