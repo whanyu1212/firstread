@@ -197,9 +197,9 @@ export function PitchMemory() {
 
 export function PitchLearning() {
   return (
-    <Frame chapter="The iteration loop" title="What improved, and what it cost"
-      intro="Some misses involved weak signals that added up; others involved preparation without explicit intent. Adding questions and rules improved recall, while also increasing false alarms."
-      note="Historical policy snapshots, rescored on saved BHH test runs. Recall at ELEVATED or above rose 7.9 percentage points; false alarms rose 2.0 points. A later fix inspected a test miss, so these figures predate that change.">
+    <Frame chapter="Learning from missed cases" title="Catching more risk also raised false alarms"
+      intro="Added questions and rules caught more risk, but also flagged more no-risk messages."
+      note="BHH test: 519 risk and 1,231 no-risk messages; flagged at ELEVATED or above. Each saved run uses its commit’s policy. Three versions, not a threshold sweep. Results predate a later fix informed by a test miss.">
       <Glass><Iterations complete /></Glass>
     </Frame>
   );

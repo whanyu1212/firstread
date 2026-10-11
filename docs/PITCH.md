@@ -30,7 +30,7 @@ Use the three-minute script for a timed submission. In a conversation with judge
 
 “A risk ledger preserves earlier concern, and one calm message cannot erase a crisis. But persistence can amplify a mistaken assessment. Five held-out conversations exceeded their labelled ceiling, and one that should escalate was missed. We need better initial readings and recovery behavior without losing sensitivity.”
 
-### 2:05–2:27 — What improved, and what it cost
+### 2:05–2:27 — Catching more risk also raised false alarms
 
 “Testing exposed weak signals that added up and preparation without explicit intent. Adding questions and rules raised recall from 88.1 to 96 percent, but false alarms rose from 1.5 to 3.5 percent. These are historical snapshots, not proof that each change was an unqualified improvement.”
 
