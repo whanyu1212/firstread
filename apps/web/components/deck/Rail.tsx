@@ -8,11 +8,11 @@ import type { SlideMeta } from "@/slides";
  * current slide and dashed after it, like the demo's rule before a turn is read. The current dot
  * fills as its build steps play. The rule breaks between acts.
  */
-export function Rail({ slides, index, step }: { slides: SlideMeta[]; index: number; step: number }) {
+export function Rail({ slides, index, step, offset = 0 }: { slides: SlideMeta[]; index: number; step: number; offset?: number }) {
   return (
     <ol className="flex items-center" aria-label="Slides">
       {slides.map((s, i) => {
-        const n = i + 1;
+        const n = i + offset + 1;
         const fill = n < index ? 1 : n === index ? (step + 1) / (s.steps + 1) : 0;
         const newAct = i > 0 && s.act !== slides[i - 1]!.act;
         return (

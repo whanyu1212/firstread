@@ -11,7 +11,7 @@ export default async function SlidePage({ params }: { params: Promise<{ slide: s
   const slide = Number.isInteger(n) ? SLIDES[n - 1] : undefined;
   if (!slide) notFound();
   return (
-    <DeckShell index={n} slides={SLIDES.map(({ title, act, steps }) => ({ title, act, steps }))}>
+    <DeckShell key={n} index={n} slides={SLIDES.map(({ title, act, steps, appendix }) => ({ title, act, steps, appendix }))}>
       <slide.Content />
     </DeckShell>
   );
