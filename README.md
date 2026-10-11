@@ -1,16 +1,21 @@
 # FirstRead
 
-A safety layer for mental health companion chatbots. FirstRead reads every turn before
-anything reaches the user. It checks the user's message for signs of self-harm risk, then
-checks the companion's draft reply before it's sent. Both checks are one call each to
+**A runtime safety layer for AI companions.** The companion holds the conversation;
+FirstRead checks the conversation and draft replies, then applies a policy to decide what
+gets delivered. This proof of concept focuses on mental health support.
+
+The user check runs in parallel with the companion drafting its reply. A second check reads
+that draft before delivery. Both checks are one call each to
 [Jev](https://vercel.com/docs/ai-gateway/sdks-and-apis/typesafe) through Vercel AI Gateway,
 which answers a set of yes/no questions with probabilities fast enough to run on every turn.
 
-It's for teams building companion apps who need risk caught and routed to a person, without
-making every reply wait. Built for the **What Would Jev Do?** hackathon (Oct 6–11, 2026).
+It's for teams building companion apps who need inspectable risk checks and control over
+reply delivery. The public demo records escalation events; a real deployment would need a
+staffed human response workflow. Built for the **What Would Jev Do?** hackathon (Oct 6–11, 2026).
 
 - **Live demo:** https://firstread-mu.vercel.app/demo. Recorded scenarios play with no key, and typed messages run on the demo's key, within limits.
 - **Deck:** https://firstread-mu.vercel.app/deck
+- **Video:** [final narration and recording notes](docs/VIDEO.md)
 
 On the Between Help and Harm benchmark's test split (519 self-harm messages against 1,231 with
 no risk), Jev scores **AUC 0.992** and catches **96% of self-harm messages at a 5% false-alarm
@@ -31,7 +36,7 @@ flowchart LR
   R --> A
   A --> S["send:<br/>the draft as written"]
   A --> P["replace:<br/>a safe reply that<br/>points to support"]
-  A --> E["escalate:<br/>the crisis reply,<br/>and alert a person"]
+  A --> E["escalate:<br/>the crisis reply,<br/>and an escalation event"]
 ```
 
 - **The user check runs while the companion writes** (`guard.startTurn()`), so it adds almost
@@ -166,6 +171,12 @@ and the evals, copy `.env.example` to `.env` at the repo root and fill in:
 
 `pnpm demo` runs a terminal chat; plug your companion into `draftReply()` in
 `packages/firstread/examples/chat-demo.ts`.
+
+## Deployment
+
+Vercel is connected to this GitHub repository. Branch pushes create previews; merges to
+`main` deploy production automatically. The Vercel build runs workspace typechecking and
+tests before building the Next.js app. See [deployment setup and release checks](docs/DEPLOYMENT.md).
 
 ## Safety and scope
 

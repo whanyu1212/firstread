@@ -4,6 +4,8 @@ dist/
 .next/
 *.tsbuildinfo
 logs/
+# Local recordings, generated narration, captions, renders and browser captures.
+/output/
 **/evals/results/
 **/evals/data/
 .claude/settings.local.json

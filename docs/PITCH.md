@@ -1,14 +1,21 @@
 # FirstRead: design walkthrough
 
+Lead with the role: **FirstRead is a runtime safety layer for AI companions.** The companion
+holds the conversation; FirstRead checks context and draft replies, then applies a delivery
+policy. Mental health support is the setting for this proof of concept.
+
 The main deck is `/deck/1` through `/deck/9`: motivation, requirements, model choice, a concrete intervention, then policy and runtime details. The detailed appendix is `/deck/10` through `/deck/14`.
 
 Use the three-minute script for a timed submission. In a conversation with judges, allow five to six minutes: pause on the comparison, policy rules, and iteration chart rather than rushing the reasoning. There are no hidden builds in the main deck; the appendix keeps its step-by-step diagrams.
+
+The [recorded walkthrough](VIDEO.md) has its own 5:09 narration and edit sequence, opening
+with a diagram that separates the companion from FirstRead before the motivation slide.
 
 ## Three-minute route
 
 ### 0:00–0:20 — Why this project
 
-“The cost of ongoing therapy in Singapore made us think about a more accessible companion. But checking every turn with another LLM could add a long wait. Jev made that worth revisiting. FirstRead tests the safety layer; it is not a therapy service.”
+“FirstRead is a runtime safety layer for AI companions. Mental health support costs in Singapore motivated our prototype. The companion holds the conversation; FirstRead checks it and controls reply delivery. Jev made checking every turn with less delay worth testing.”
 
 ### 0:20–0:37 — What checking every turn demands
 
