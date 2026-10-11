@@ -154,12 +154,13 @@ pnpm test     # policy, wiring and demo tests, no keys needed
 pnpm dev      # http://localhost:3000: the deck at /deck, the demo at /demo
 ```
 
-With no keys, the tests, the deck and the demo's recorded scenarios all work. For typed messages
+With no keys, the tests, `pnpm --filter web build`, the deck and the demo's recorded scenarios all
+work; a typed message says live chat is off. For typed messages
 and the evals, copy `.env.example` to `.env` at the repo root and fill in:
 
 | Variable | What it's for |
 | --- | --- |
-| `AI_GATEWAY_API_KEY` | Jev, through Vercel AI Gateway. Or set `TYPESAFE_API_KEY` for a direct TypeSafe key. Also needed for `pnpm --filter web build`. |
+| `AI_GATEWAY_API_KEY` | Jev, through Vercel AI Gateway. Or set `TYPESAFE_API_KEY` for a direct TypeSafe key. |
 | `OPENAI_API_KEY` | The demo's companion (gpt-6-sol), and the gpt-6-luna and gpt-6-sol baselines in the evals. |
 | `KV_REST_API_URL`, `KV_REST_API_TOKEN` | Optional locally. Upstash Redis for the demo's sessions and limits. Without them, sessions live in memory. A production deployment without them won't run typed messages on its own key. |
 
@@ -221,3 +222,8 @@ holds the deck and the demo.
 | `apps/web/lib/turn.ts` | One demo turn: the user check alongside the companion, the CRISIS short-circuit, the reply check |
 | `apps/web/app/api/chat/route.ts` | The demo's chat endpoint: sessions, limits and keys |
 | `apps/web/slides/` | The deck. Every number on it is read from `slides/data/` or the library |
+
+## Licence
+
+MIT, see [LICENSE](LICENSE). The Between Help and Harm benchmark that the evals download is
+CC-BY-NC-4.0 (non-commercial) and isn't part of this repo.

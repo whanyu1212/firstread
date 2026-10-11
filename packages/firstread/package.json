@@ -1,6 +1,7 @@
 {
   "name": "firstread",
   "version": "0.1.0",
+  "license": "MIT",
   "description": "Per-turn self-harm risk audit for mental health companion agents, powered by Jev.",
   "private": true,
   "type": "module",

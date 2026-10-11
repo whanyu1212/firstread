@@ -1,9 +1,26 @@
 import "server-only";
-import { FirstRead, type JevClient } from "firstread";
+import { FirstRead, type JevClient, clientConfig, createJevClient } from "firstread";
 import { DEMO_REPLIES } from "./replies";
 
-/** The demo's guard: Jev through AI Gateway (AI_GATEWAY_API_KEY), with the demo's replies. */
-export const guard = new FirstRead({ replies: DEMO_REPLIES });
+let live: FirstRead | undefined;
+
+/**
+ * The demo's guard: Jev through AI Gateway (AI_GATEWAY_API_KEY), with the demo's replies. Made on
+ * the first turn rather than when the module loads, so the app builds, and serves the deck and the
+ * replays, without a key. Null when no Jev key is set: the route refuses live turns then.
+ */
+export function liveGuard(): FirstRead | null {
+  if (!live) {
+    let config: ReturnType<typeof clientConfig>;
+    try {
+      config = clientConfig();
+    } catch {
+      return null;
+    }
+    live = new FirstRead({ client: createJevClient(config), replies: DEMO_REPLIES });
+  }
+  return live;
+}
 
 /** A Jev that's down: every check fails, so every turn fails closed. */
 const unreachableJev: JevClient = {
