@@ -63,9 +63,6 @@ export function TurnPreview() {
           </li>
         </ol>
       </div>
-      <p className="border-t border-line bg-margin px-5 py-3 text-xs leading-relaxed text-muted sm:px-6">
-        Jev checks the message and draft. FirstRead’s policy decides what reaches the user.
-      </p>
     </figure>
   );
 }
