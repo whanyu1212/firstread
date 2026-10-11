@@ -12,10 +12,10 @@ making every reply wait. Built for the **What Would Jev Do?** hackathon (Oct 6�
 - **Live demo:** https://firstread-mu.vercel.app/demo. Recorded scenarios play with no key, and typed messages run on the demo's key, within limits.
 - **Deck:** https://firstread-mu.vercel.app/deck
 
-On the 2,044-message test split of the Between Help and Harm benchmark, Jev scores
-**AUC 0.992** and catches **96% of self-harm messages at a 5% false-alarm rate**, with a
-**0.50s** median check, at about **$0.04 per 1,000 checks**. It beats every general model we
-tried, on accuracy, speed and cost.
+On the Between Help and Harm benchmark's test split (519 self-harm messages against 1,231 with
+no risk), Jev scores **AUC 0.992** and catches **96% of self-harm messages at a 5% false-alarm
+rate**, with a **0.50s** median check, at about **$0.04 per 1,000 checks**. It beats every general
+model we tried on accuracy and speed, and each one whose cost we recorded on cost.
 
 ## How a turn works
 
@@ -58,8 +58,9 @@ recall rather than read as odds.
 
 ### Single messages: Jev against four general models
 
-BHH test split, 519 self-harm messages against 1,231 with no risk. Every model answered all
-2,044 messages. Each model gets the same questions about the same text, and is scored in the best
+BHH test split. Every model answered all 2,044 messages. AUC and recall use the 1,750 that are
+self-harm (519) or have no risk (1,231), leaving out the 294 about other crises; latency uses all
+2,044. Each model gets the same questions about the same text, and is scored in the best
 way it allows; the cutoff is swept per model, so no model is judged on cutoffs tuned for Jev.
 
 | Model | Scored by | AUC [95% CI] | Recall at 5% false alarms | Median check | 90th percentile | Over 3s | $ per 1,000 checks |
@@ -73,8 +74,8 @@ way it allows; the cutoff is swept per model, so no model is judged on cutoffs t
 - **Jev's lead is real against every model:** the paired 95% interval of each AUC difference
   is above zero. GLM comes closest (0.016 [0.009, 0.025]). Against it, Jev's case is mostly
   speed (3× faster) and cost (about 5× cheaper).
-- **Jev's answers are usable as scores.** 23% of its answers are at 0 or 1, against 64–98% for the
-  others, so there are real cutoffs to choose between.
+- **Jev's answers are usable as scores.** 23% of its answers are at or near 0 or 1 (at most 0.01
+  or at least 0.99), against 64–98% for the others, so there are real cutoffs to choose between.
 - **As deployed** (the cutoffs in `policy.ts`), 96% of self-harm messages reach ELEVATED, and 4%
   of no-risk messages do. 24% of no-risk messages reach WATCH, which only makes the reply check
   stricter.
@@ -83,7 +84,7 @@ way it allows; the cutoff is swept per model, so no model is judged on cutoffs t
   gateway, so the gateway hop is in their times. Costs are list prices (`PRICES` in
   `evals/llm-client.ts`) times each run's token counts.
 
-AUC, recall, latency and the share of 0-or-1 answers are in `apps/web/slides/data/bhh.json`, the
+AUC, recall, latency and the share of answers near 0 or 1 are in `apps/web/slides/data/bhh.json`, the
 file the deck reads. To reproduce (the dataset is CC-BY-NC-4.0 and isn't committed):
 
 ```bash
