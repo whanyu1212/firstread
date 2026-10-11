@@ -6,7 +6,7 @@ import { useReducedMotion } from "motion/react";
 import { type ReactNode, useEffect, useState } from "react";
 import type { ChatData, ChatMessage } from "@/lib/chat";
 import { handoffLine } from "@/lib/handoff";
-import { draftChange, pct, why } from "@/lib/margin";
+import { assessmentUnavailable, draftChange, pct, why } from "@/lib/margin";
 import { dataPart, secs } from "./CompanionChat";
 import { LEVEL_COLOR, LEVEL_LABEL, LEVEL_MEANING, LEVEL_ORDER } from "./levels";
 import { REPLY_SIGNAL_LABELS, USER_SIGNAL_GROUPS, USER_SIGNAL_LABELS } from "./signals";
@@ -47,7 +47,29 @@ export function MarginRule({ before, after }: { before: RiskLevel | null; after:
 }
 
 /** The conversation's state now: the top of the margin. */
-export function NowSummary({ risk, waiting = false }: { risk: ChatData["risk"] | undefined; waiting?: boolean }) {
+export function NowSummary({ risk, check, audit, pending = false, waiting = false }: {
+  risk: ChatData["risk"] | undefined;
+  check?: ChatData["check"];
+  audit?: ChatData["audit"];
+  pending?: boolean;
+  waiting?: boolean;
+}) {
+  const unavailable = assessmentUnavailable(check, audit);
+  const assessing = pending && !audit;
+  const assessmentNotice = (
+    <div role="status">
+      <p className={`font-semibold ${unavailable ? "text-danger" : "text-muted"}`}>
+        {unavailable ? "Assessment unavailable" : "Assessment pending"}
+      </p>
+      <p className="mt-1.5 text-sm text-muted">
+        {unavailable
+          ? "The latest message could not be assessed. This is not a no-risk result."
+          : "Waiting for this turn's assessment to finish."}
+      </p>
+    </div>
+  );
+  const showAssessment = unavailable || assessing;
+  if (!risk && showAssessment) return assessmentNotice;
   if (!risk && waiting) {
     return <p className="text-muted">The level appears once FirstRead has read the first message.</p>;
   }
@@ -61,6 +83,12 @@ export function NowSummary({ risk, waiting = false }: { risk: ChatData["risk"] |
   }
   return (
     <div>
+      {showAssessment && (
+        <div className="mb-3">
+          {assessmentNotice}
+          <p className="mt-3 text-sm text-muted">Retained conversation level:</p>
+        </div>
+      )}
       <p className="flex items-center gap-2.5">
         <span className="size-3.5 rounded-full" style={{ background: LEVEL_COLOR[risk.level] }} aria-hidden="true" />
         <span className="font-mono text-2xl leading-none font-semibold tracking-tight">{LEVEL_LABEL[risk.level]}</span>
@@ -70,7 +98,7 @@ export function NowSummary({ risk, waiting = false }: { risk: ChatData["risk"] |
           </span>
         )}
       </p>
-      <p className="mt-1.5 text-sm text-muted">{LEVEL_MEANING[risk.level]}</p>
+      {!showAssessment && <p className="mt-1.5 text-sm text-muted">{LEVEL_MEANING[risk.level]}</p>}
       {risk.ledger.length > 0 && (
         <details className="group mt-3 text-sm">
           <summary className="cursor-pointer text-accent marker:content-none">

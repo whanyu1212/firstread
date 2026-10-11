@@ -60,6 +60,8 @@ export function DemoClient({ serverKey }: { serverKey: boolean }) {
     .reverse()
     .map((m) => dataPart(m, "risk"))
     .find(Boolean);
+  // Use this turn's result: an older failed assessment must not leak into a new turn or replay.
+  const latestReply = rows.at(-1)?.reply;
 
   // Keep the latest turn in view as messages and notes come in.
   useEffect(() => {
@@ -88,7 +90,13 @@ export function DemoClient({ serverKey }: { serverKey: boolean }) {
         {rows.length > 0 && (
           <header className={`${ROW} gutter`}>
             <div className="col-span-2 px-4 pt-3 pb-2 lg:col-span-1 lg:col-start-3 lg:px-5 lg:py-4">
-              <NowSummary risk={latestRisk} waiting />
+              <NowSummary
+                risk={latestRisk}
+                check={latestReply && dataPart(latestReply, "check")}
+                audit={latestReply && dataPart(latestReply, "audit")}
+                pending={chat.busy}
+                waiting
+              />
             </div>
             <div className="col-span-2 self-center px-4 pb-3 text-sm text-ink/75 lg:col-span-1 lg:col-start-1 lg:row-start-1 lg:max-w-[60ch] lg:px-6 lg:py-4">
               <p className="hidden sm:block">
