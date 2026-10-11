@@ -184,7 +184,7 @@
 }
 
 @media (min-width: 64rem) and (max-height: 700px) {
-  /* SVGs otherwise grow with column width even when the window is short. Preserve the
-     whole viewBox, including axes and labels, while leaving room for the explanation. */
-  .plotSurface svg { max-height: 46dvh; }
+  /* Limit wide charts while keeping the whole viewBox visible. Below the readable
+     size floor, let the slide scroll instead of shrinking axes and labels further. */
+  .plotSurface svg { max-height: max(21rem, 46dvh); }
 }
