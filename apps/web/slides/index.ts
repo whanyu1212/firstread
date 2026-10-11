@@ -26,7 +26,7 @@ export const SLIDES: (SlideMeta & { Content: ComponentType })[] = [
   { title: "One conversation, two checks", act: "Walkthrough", steps: 0, Content: Intervention },
   { title: "Checking every turn", act: "Walkthrough", steps: 0, Content: Requirements },
   { title: "Why Jev", act: "Walkthrough", steps: 0, Content: Comparison },
-  { title: "Scores and decisions", act: "Walkthrough", steps: 0, Content: Policy },
+  { title: "Questions to risk levels", act: "Walkthrough", steps: 0, Content: Policy },
   { title: "Where the checks run", act: "Walkthrough", steps: 0, Content: Runtime },
   { title: "Risk across turns", act: "Walkthrough", steps: 0, Content: Memory },
   { title: "What testing changed", act: "Walkthrough", steps: 0, Content: Learning },

@@ -18,9 +18,9 @@ Use the three-minute script for a timed submission. In a conversation with judge
 
 “We compared five models on the same questions. Jev had the highest AUC, but GLM was close: 0.976 against 0.992. GLM’s median check took about three times as long, with a higher recorded cost. That makes Jev a useful fit, while leaving calibration and clinical reliability unresolved.”
 
-### 1:03–1:22 — Scores aren’t decisions
+### 1:03–1:22 — Questions to risk levels
 
-“On the next recorded turn, intent, imminence, and preparation cross explicit thresholds. The policy chooses CRISIS and stops generation. Keeping that decision in code lets us trace a miss back to the question, the score, or the rule. These thresholds remain choices we have to test.”
+“Jev answers questions about thoughts, urges, intent, preparation, and timing. Each score is compared with the cutoffs for WATCH, ELEVATED, and CRISIS. Several rules can match; the highest level wins. Here, intent, preparation, and acting soon each reach CRISIS. The runtime stops generation and escalates.”
 
 ### 1:22–1:43 — Where the checks run
 
@@ -45,7 +45,7 @@ Use the three-minute script for a timed submission. In a conversation with judge
 - Rehearse the timing; the script is roughly 370 words plus a short demo. For a strict three-minute slot, preload the recording so navigation does not consume the demo window.
 - On slide 1, the recorded assessment is ELEVATED. Do not present that as a clinical finding or proof that the classification is correct. The example demonstrates how the policy changes a reply.
 - On slide 3, explain what the comparison supports: model choice for this check. AUC uses 1,750 self-harm/no-risk messages; latency uses all 2,044 shared messages. Test labels are model-generated. The cost estimate covers Jev user checks only, excluding the companion and reply check.
-- On slide 4, the shown rules are selected matching rules. Others also fire. The cutoff values come from the current policy, and the scores come from the saved run.
+- On slide 4, read across a question to its recorded score and category cutoffs. Check marks indicate met cutoffs, not clinical findings. Five of 14 questions are shown, in shortened form; the full policy also includes combined rules such as plan plus means. NONE means no rule matches, though conversation memory can retain a higher earlier level.
 - On slide 6, keep the small synthetic holdout results as counts. Do not turn them into population-level reliability claims.
 - On slide 7, the later test-miss fix is outside the historical iteration numbers. Distinguish those historical false-alarm rates from the current model-comparison operating point.
 - For the longer walkthrough, pause on the question: what evidence would justify changing a cutoff or allowing risk to settle sooner?
@@ -62,6 +62,7 @@ Use the three-minute script for a timed submission. In a conversation with judge
 
 ## Evidence and boundaries
 
+- [All 18 Jev questions](https://github.com/whanyu1212/firstread/blob/main/packages/firstread/src/questions.ts): 14 user-message questions and 4 companion-reply questions, with the exact wording used by the checks. Slide 4 links here in a new tab.
 - `README.md`: benchmark scope, cost basis, conversation holdout counts, label provenance, and limitations.
 - `apps/web/slides/data/bhh.json`: model AUC and measured latency. Jev’s median is 503 ms, GLM’s 1,562 ms; displayed values are rounded.
 - `apps/web/slides/data/replay-crisis.json`: genuine saved draft, delivered reply, signals, and timings. These are synthetic messages, not user research or clinical cases.

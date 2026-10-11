@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { levelEvidence } from "firstread/policy";
+import { CRISIS_CUTOFFS, ELEVATED_CUTOFFS, WATCH_CUTOFFS, levelEvidence } from "firstread/policy";
 import type { ReactNode } from "react";
 import bhh from "@/slides/data/bhh.json";
 import crisis from "@/slides/data/replay-crisis.json";
@@ -112,27 +112,54 @@ export function PitchComparison() {
 }
 
 export function PitchPolicy() {
+  // Short paraphrases of questions.ts, with thresholds read from the actual policy.
+  const questions = [
+    ["ideation", "Do they express thoughts of dying or hurting themselves?"],
+    ["self_harm", "Are they harming themselves, or feeling urges to do so?"],
+    ["intent", "Do they intend to act on those thoughts?"],
+    ["preparation", "Have they made preparations, such as goodbye letters?"],
+    ["imminent", "Might they act soon, such as today or tonight?"],
+  ] as const;
+  const categories = [
+    { name: "WATCH", rules: WATCH_CUTOFFS, color: "text-ink", background: "bg-level-watch/10" },
+    { name: "ELEVATED", rules: ELEVATED_CUTOFFS, color: "text-ink", background: "bg-level-elevated/10" },
+    { name: "CRISIS", rules: CRISIS_CUTOFFS, color: "text-level-crisis", background: "bg-level-crisis/10" },
+  ];
   return (
-    <Frame chapter="From answers to action" title="Scores aren’t decisions"
-      intro="Jev answers specific questions. FirstRead applies explicit rules, keeps conversation state, and chooses what can be delivered. The cutoffs are code we can inspect and change."
-      note="Selected matching rules from the second recorded turn; other rules also fire. The highest matching level wins. These cutoffs are tuned policy choices, not validated clinical thresholds.">
-      <blockquote className="border-l-2 border-accent pl-5 text-2xl">“{crisisTurn.user}”</blockquote>
-      <div className="grid gap-8 lg:grid-cols-[1.1fr_1fr] lg:gap-14">
-        <div>
-          <h2 className={`${label} mb-4`}>Jev’s answer → the rule in code</h2>
-          <dl className="divide-y divide-ink/15 border-y border-ink/15">
-            {evidence.answers.filter((answer) => ["intent", "imminent", "preparation"].includes(answer.signal)).map((answer) => (
-              <div key={answer.signal} className="flex items-center justify-between gap-4 py-4 text-xl"><dt className="capitalize">{answer.signal === "imminent" ? "Acting soon" : answer.signal}</dt><dd className="font-mono">{answer.value.toFixed(2)} ≥ {answer.cutoff.toFixed(2)}</dd></div>
-            ))}
-          </dl>
-          <p className="mt-4 text-fig text-muted">Score on the left; configured cutoff on the right.</p>
-        </div>
-        <div className="border-l-2 border-level-crisis pl-6">
-          <h2 className="text-3xl font-semibold">{evidence.level} → escalate</h2>
-          <p className="mt-5 text-xl leading-relaxed">Stop the companion’s generation, send the crisis reply, and emit a handoff event.</p>
-          <p className="mt-5 text-xl leading-relaxed text-muted">Keeping this decision in code makes a miss traceable: was the question wrong, the score low, or the rule too strict?</p>
-        </div>
+    <Frame chapter="From answers to a category" title="From Jev’s questions to risk levels"
+      intro={<>Jev answers <a href="https://github.com/whanyu1212/firstread/blob/main/packages/firstread/src/questions.ts" target="_blank" rel="noreferrer" className="text-accent underline underline-offset-4">18 questions<span className="sr-only"> (source on GitHub, opens in a new tab)</span></a>: 14 about the user, 4 about the reply. The highest matching level wins.</>}
+      note={<>Five of 14 user questions, shortened. “—”: no direct rule. NONE: no rule matches; earlier conversation risk can persist. <Link href="/deck/10" className="text-accent underline">More policy detail in the appendix</Link>. These are policy thresholds, not clinical probabilities.</>}>
+      <blockquote className="border-l-2 border-accent pl-5 text-xl">Recorded message: “{crisisTurn.user}”</blockquote>
+      <div className="overflow-x-auto rounded-xl border border-ink/10 bg-white/65">
+        <table className="block w-full text-lg md:table">
+          <caption className="block px-5 pt-4 pb-3 text-left text-fig text-muted md:table-caption">✓ = this recorded score meets the cutoff. Several levels can match; CRISIS takes precedence.</caption>
+          <thead className="hidden md:table-header-group">
+            <tr className="border-b border-ink/15">
+              <th scope="col" className="px-5 py-3 text-left font-medium">Question Jev answers</th>
+              <th scope="col" className="px-4 py-3 text-right font-medium">Score</th>
+              {categories.map((category) => <th key={category.name} scope="col" className={`px-5 py-3 text-center text-fig font-semibold ${category.background} ${category.color}`}>{category.name}</th>)}
+            </tr>
+          </thead>
+          <tbody className="block md:table-row-group">{questions.map(([signal, question]) => {
+            const score = crisisTurn.data.audit.userSignals![signal];
+            return (
+              <tr key={signal} className="grid grid-cols-3 border-b border-ink/10 last:border-0 md:table-row">
+                <th scope="row" className="col-span-3 px-5 pt-4 pb-2 text-left font-normal leading-snug md:py-3">{question}</th>
+                <td className="col-span-3 flex justify-between px-5 pt-0 pb-4 md:table-cell md:px-4 md:py-3 md:text-right"><span className="text-muted md:hidden">Recorded score</span><span className="font-mono">{score.toFixed(2)}</span></td>
+                {categories.map((category) => {
+                  const cutoff = category.rules.find(([key]) => key === signal)?.[1];
+                  const met = cutoff !== undefined && score >= cutoff;
+                  return <td key={category.name} className={`px-2 py-3 text-center font-mono whitespace-nowrap md:px-5 ${category.background} ${met ? `font-semibold ${category.color}` : "text-muted"}`}>
+                    <span className="mb-1 block font-sans text-sm md:hidden">{category.name}</span>
+                    {cutoff === undefined ? <span aria-label="No direct rule">—</span> : <><span aria-hidden="true">{met ? "✓ " : ""}</span><span className="sr-only">{met ? "Met: " : "Not met: "}</span>≥ {cutoff.toFixed(2)}</>}
+                  </td>;
+                })}
+              </tr>
+            );
+          })}</tbody>
+        </table>
       </div>
+      <p className="border-l-2 border-level-crisis pl-5 text-xl leading-relaxed"><strong>{evidence.level} → escalate.</strong> Stop generation, send the crisis reply, and emit a handoff event.</p>
     </Frame>
   );
 }
