@@ -5,6 +5,7 @@ import { DURATION, useTransition } from "./motion";
 import { MODELS, type Model, jev, others } from "./series";
 import { Stat } from "./Stat";
 import { useStep } from "./steps";
+import styles from "./AppendixFigures.module.css";
 
 /**
  * Slide 3: how long one check takes, for Jev and the four general models, on one time axis: a bar
@@ -34,14 +35,16 @@ export function Latency({ at: from }: { at: number }) {
   const play = step >= from;
 
   return (
-    <figure aria-label={`Time per check: ${MODELS.map((m) => `${m.run.name} median ${seconds(m.run.latency.p50)}, 90% under ${seconds(m.run.latency.p90)}`).join("; ")}.`}>
-      <Stat
-        value={seconds(jev.run.latency.p50)}
-        label={`${jev.run.name}'s median check`}
-        color={jev.color}
-        versus={`Fastest of the other four: ${fastest.run.name}, ${seconds(fastest.run.latency.p50)}, ${(fastest.run.latency.p50 / jev.run.latency.p50).toFixed(1)}× as long.`}
-      />
-      <div className="flex gap-4" aria-hidden="true">
+    <figure className={`${styles.figure} ${styles.latencyFigure}`} aria-label={`Time per check: ${MODELS.map((m) => `${m.run.name} median ${seconds(m.run.latency.p50)}, 90% under ${seconds(m.run.latency.p90)}`).join("; ")}.`}>
+      <div className={styles.statBand}>
+        <Stat
+          value={seconds(jev.run.latency.p50)}
+          label={`${jev.run.name}'s median check`}
+          color={jev.color}
+          versus={`Fastest of the other four: ${fastest.run.name}, ${seconds(fastest.run.latency.p50)}, ${(fastest.run.latency.p50 / jev.run.latency.p50).toFixed(1)}× as long.`}
+        />
+      </div>
+      <div className={`${styles.plotSurface} ${styles.latencyPlot} flex gap-4`} aria-hidden="true">
         <div className="shrink-0 space-y-2">
           {MODELS.map((m) => (
             <p key={m.id} className={`flex h-11 flex-col justify-center text-fig leading-tight ${m === jev ? "font-semibold" : ""}`}>

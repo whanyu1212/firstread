@@ -3,6 +3,7 @@
 import { motion } from "motion/react";
 import { createContext, type ReactNode, useContext } from "react";
 import { DURATION, useTransition } from "./motion";
+import styles from "./DeckStyles.module.css";
 
 /**
  * Build steps, like Keynote builds: a slide starts at step 0 and the presenter reveals the rest
@@ -87,8 +88,8 @@ export function Point({ at, title, children }: { at: number; title: string; chil
  */
 export function Wide({ visual, children }: { visual: ReactNode; children: ReactNode }) {
   return (
-    <div className="flex flex-col gap-8 lg:gap-10">
-      <div className="slide-text slide-head">{children}</div>
+    <div className={styles.wide}>
+      <div className={`slide-text slide-head ${styles.appendixText}`}>{children}</div>
       <div className="slide-visual min-w-0">{visual}</div>
     </div>
   );
@@ -98,9 +99,9 @@ export function Wide({ visual, children }: { visual: ReactNode; children: ReactN
 export function Split({ visual, wide = false, children }: { visual: ReactNode; wide?: boolean; children: ReactNode }) {
   return (
     <div
-      className={`grid items-center gap-10 lg:gap-14 ${wide ? "lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)]" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]"}`}
+      className={`${styles.split} grid items-center gap-8 lg:gap-10 ${wide ? "lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)]" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]"}`}
     >
-      <div className="slide-text">{children}</div>
+      <div className={`slide-text ${styles.appendixText}`}>{children}</div>
       <div className="slide-visual min-w-0">{visual}</div>
     </div>
   );

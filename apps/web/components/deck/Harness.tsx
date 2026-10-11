@@ -7,6 +7,7 @@ import type { Recording } from "@/lib/replay";
 import recording from "@/slides/data/replay-crisis.json";
 import { DURATION, useTransition } from "./motion";
 import { useStep } from "./steps";
+import styles from "./DeckStyles.module.css";
 
 /**
  * Act 2, "Jev in the harness": one recorded turn through FirstRead (guard.ts) on a real time axis.
@@ -42,7 +43,7 @@ export function Harness({ at: first, draftAt, outcomesAt, deadlineAt, timelineOn
   const show = { check: step >= first, reply: step >= draftAt, outcomes: step >= outcomesAt, deadline: step >= deadlineAt };
 
   return (
-    <figure
+    <figure className={styles.harness}
       aria-label={`One recorded turn: Jev read the message in ${s(CHECK)} while the companion wrote its draft in ${s(DRAFT)}; Jev read the draft in ${s(REPLY_CHECK)}, and the reply went out at ${s(OUT)}. Both checks must answer within ${s(DEFAULT_DEADLINE_MS)} of the draft being ready, or FirstRead fails closed.`}
     >
       <div className="relative" aria-hidden="true">
@@ -78,8 +79,8 @@ export function Harness({ at: first, draftAt, outcomesAt, deadlineAt, timelineOn
         <Lane show={show.check} jev title="Jev reads the message" note={`Done ${s(DRAFT - CHECK)} before the draft is ready`}>
           <Bar show={show.check} from={0} to={CHECK} jev label={s(CHECK)} />
         </Lane>
-        <Lane show={show.check} title="The companion writes its draft" note="Its own model, its own tools" delay={0.15}>
-          <Bar show={show.check} from={0} to={DRAFT} label={s(DRAFT)} inside delay={0.15} />
+        <Lane show={show.check} title="The companion writes its draft" note="Its own model, its own tools">
+          <Bar show={show.check} from={0} to={DRAFT} label={s(DRAFT)} inside />
         </Lane>
         <Lane show={show.reply} jev title="Jev reads the draft" note="Before anything is shown">
           <Bar show={show.reply} from={DRAFT} to={OUT} jev label={s(REPLY_CHECK)} />
@@ -180,9 +181,9 @@ function Bar({ show, from, to, jev = false, label, inside = false, delay = 0 }: 
   return (
     <>
       <motion.span
-        className={`absolute top-1/2 h-6 -translate-y-1/2 origin-left rounded-md ${jev ? "bg-series-1" : "bg-ink/15"}`}
+        className={`absolute top-1/2 h-6 -translate-y-1/2 origin-left rounded-md ${jev ? styles.jevBar : styles.companionBar}`}
         style={span(from, to)}
-        initial={false}
+        initial={{ scaleX: 0 }}
         animate={{ scaleX: show ? 1 : 0 }}
         transition={show ? t(DURATION.slow, delay) : t(0)}
       />
@@ -232,7 +233,7 @@ function Appear({ show, delay = 0, children }: { show: boolean; delay?: number; 
 function Outcome({ title, crisis = false, dashed = false, children }: { title: string; crisis?: boolean; dashed?: boolean; children: ReactNode }) {
   return (
     <div
-      className={`h-full rounded-xl border bg-canvas px-4 py-3 ${dashed ? "border-dashed border-ink/40" : "border-line"}`}
+      className={`h-full border-t px-4 py-3 ${dashed ? "border-dashed border-ink/40" : "border-ink/20"}`}
       style={crisis ? { boxShadow: "inset 3px 0 0 var(--color-level-crisis)" } : undefined}
     >
       <p className="text-lg font-semibold leading-tight">{title}</p>

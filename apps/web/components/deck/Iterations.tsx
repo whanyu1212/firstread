@@ -5,6 +5,7 @@ import { useState } from "react";
 import iterations from "@/slides/data/iterations.json";
 import { DURATION, useTransition } from "./motion";
 import { useStep } from "./steps";
+import styles from "./AppendixFigures.module.css";
 
 /**
  * Act 2, the iteration loop: after each change, how much real risk the BHH test split caught at
@@ -55,16 +56,17 @@ export function Iterations({ complete = false }: { complete?: boolean }) {
 
   return (
     <figure
+      className={`${styles.figure} ${complete ? styles.completeIterations : ""}`}
       aria-label={`SI and self-harm messages caught at ELEVATED or above, against no-risk messages flagged: ${steps.map((s) => `${s.change}, ${pct(s.recall)} caught, ${pct(s.falseAlarms)} flagged`).join("; ")}.`}
     >
       {complete && (
-        <div className="mb-4 grid gap-5 border-b border-line pb-4 sm:grid-cols-2">
-          <div>
+        <div className={`${styles.metricGrid} mb-3 grid gap-3 sm:grid-cols-2`}>
+          <div className={styles.metricCard}>
             <p className="text-lg font-semibold">Risk messages caught <span className="font-normal text-muted">(recall)</span></p>
             <p className="mt-2 text-3xl font-semibold tabular-nums text-accent">{pct(first.recall)} → {pct(last.recall)}</p>
             <p className="mt-1 text-fig text-muted">{points(last.recall - first.recall)} percentage points · higher is better</p>
           </div>
-          <div>
+          <div className={styles.metricCard}>
             <p className="text-lg font-semibold">No-risk messages incorrectly flagged</p>
             <p className="mt-2 text-3xl font-semibold tabular-nums text-level-crisis">{pct(first.falseAlarms)} → {pct(last.falseAlarms)}</p>
             <p className="mt-1 text-fig text-muted">{points(last.falseAlarms - first.falseAlarms)} percentage points · more false alarms</p>
@@ -82,89 +84,92 @@ export function Iterations({ complete = false }: { complete?: boolean }) {
             </span>
           </p>}
           {complete && <p className="mb-2 text-fig text-muted">Up = more risk caught. Right = more false alarms.</p>}
-          <svg viewBox={`0 0 ${W} ${H}`} className="w-full" aria-hidden="true">
-            {Y_TICKS.map((v) => (
-              <g key={`y${v}`}>
-                <line x1={PLOT.left} x2={PLOT.right} y1={y(v)} y2={y(v)} className="stroke-line" />
-                <text x={PLOT.left - 10} y={y(v) + 5} textAnchor="end" className="fill-muted font-mono text-[16px]">
+          <div className={`${styles.plotSurface} ${styles.iterationPlot}`}>
+            <svg viewBox={`0 0 ${W} ${H}`} className="w-full" aria-hidden="true">
+              {Y_TICKS.map((v) => (
+                <g key={`y${v}`}>
+                  <line x1={PLOT.left} x2={PLOT.right} y1={y(v)} y2={y(v)} className="stroke-line" />
+                  <text x={PLOT.left - 10} y={y(v) + 5} textAnchor="end" className="fill-muted font-mono text-[16px]">
+                    {v}%
+                  </text>
+                </g>
+              ))}
+              {X_TICKS.map((v) => (
+                <text
+                  key={`x${v}`}
+                  x={x(v)}
+                  y={PLOT.bottom + 22}
+                  textAnchor={v === 0 ? "start" : v === X_MAX ? "end" : "middle"}
+                  className="fill-muted font-mono text-[16px]"
+                >
                   {v}%
                 </text>
-              </g>
-            ))}
-            {X_TICKS.map((v) => (
-              <text
-                key={`x${v}`}
-                x={x(v)}
-                y={PLOT.bottom + 22}
-                textAnchor={v === 0 ? "start" : v === X_MAX ? "end" : "middle"}
-                className="fill-muted font-mono text-[16px]"
-              >
-                {v}%
+              ))}
+              <line x1={PLOT.left} x2={PLOT.left} y1={PLOT.top} y2={PLOT.bottom} className="stroke-ink/20" />
+              <text x={(PLOT.left + PLOT.right) / 2} y={H - 4} textAnchor="middle" className="fill-muted text-[16px]">
+                No-risk messages flagged (false alarms)
               </text>
-            ))}
-            <line x1={PLOT.left} x2={PLOT.left} y1={PLOT.top} y2={PLOT.bottom} className="stroke-ink/20" />
-            <text x={(PLOT.left + PLOT.right) / 2} y={H - 4} textAnchor="middle" className="fill-muted text-[16px]">
-              No-risk messages flagged (false alarms)
-            </text>
-            <text
-              transform={`translate(14 ${(PLOT.top + PLOT.bottom) / 2}) rotate(-90)`}
-              textAnchor="middle"
-              className="fill-muted text-[16px]"
-            >
-              Risk messages caught, from {Y_MIN}%
-            </text>
+              <text
+                transform={`translate(14 ${(PLOT.top + PLOT.bottom) / 2}) rotate(-90)`}
+                textAnchor="middle"
+                className="fill-muted text-[16px]"
+              >
+                Risk messages caught, from {Y_MIN}%
+              </text>
 
-            {steps.slice(1).map((s, i) => {
-              const prev = steps[i]!;
-              const shown = step >= i + 2;
-              return (
-                <motion.line
-                  key={`seg${s.commit}`}
-                  x1={x(prev.falseAlarms)}
-                  y1={y(prev.recall)}
-                  x2={x(s.falseAlarms)}
-                  y2={y(s.recall)}
-                  stroke="var(--color-series-1)"
-                  strokeWidth={2}
-                  initial={false}
-                  animate={{
-                    pathLength: shown ? 1 : 0,
-                    opacity: shown ? 1 : 0,
-                  }}
-                  transition={shown ? t(DURATION.base) : t(0)}
-                />
-              );
-            })}
-            {steps.map((s, i) => {
-              const shown = step >= i + 1;
-              const l = LABEL[i % LABEL.length]!;
-              return (
-                <motion.g
-                  key={s.commit}
-                  initial={false}
-                  animate={{ opacity: shown ? 1 : 0 }}
-                  transition={shown ? t(DURATION.fast, i === 0 ? 0 : DURATION.base) : t(0)}
-                >
-                  <circle
-                    cx={x(s.falseAlarms)}
-                    cy={y(s.recall)}
-                    r={hover === i ? 8 : 6.5}
-                    fill="var(--color-series-1)"
-                    stroke="var(--color-canvas)"
-                    strokeWidth={2}
+              {steps.slice(1).map((s, i) => {
+                const prev = steps[i]!;
+                const shown = step >= i + 2;
+                return (
+                  <motion.line
+                    key={`seg${s.commit}`}
+                    x1={x(prev.falseAlarms)}
+                    y1={y(prev.recall)}
+                    x2={x(s.falseAlarms)}
+                    y2={y(s.recall)}
+                    stroke="var(--color-series-1)"
+                    strokeWidth={2.5}
+                    strokeLinecap="round"
+                    initial={false}
+                    animate={{
+                      pathLength: shown ? 1 : 0,
+                      opacity: shown ? 1 : 0,
+                    }}
+                    transition={shown ? t(DURATION.base) : t(0)}
                   />
-                  <text
-                    x={x(s.falseAlarms) + l.dx}
-                    y={y(s.recall) + l.dy}
-                    textAnchor={l.anchor}
-                    className="fill-ink text-[17px] font-semibold"
+                );
+              })}
+              {steps.map((s, i) => {
+                const shown = step >= i + 1;
+                const l = LABEL[i % LABEL.length]!;
+                return (
+                  <motion.g
+                    key={s.commit}
+                    initial={false}
+                    animate={{ opacity: shown ? 1 : 0 }}
+                    transition={shown ? t(DURATION.fast, i === 0 ? 0 : DURATION.base) : t(0)}
                   >
-                    {i + 1}
-                  </text>
-                </motion.g>
-              );
-            })}
-          </svg>
+                    <circle
+                      cx={x(s.falseAlarms)}
+                      cy={y(s.recall)}
+                      r={hover === i ? 8 : 6.5}
+                      fill="var(--color-series-1)"
+                      stroke="var(--color-canvas)"
+                      strokeWidth={2}
+                    />
+                    <text
+                      x={x(s.falseAlarms) + l.dx}
+                      y={y(s.recall) + l.dy}
+                      textAnchor={l.anchor}
+                      className="fill-ink text-[17px] font-semibold"
+                    >
+                      {i + 1}
+                    </text>
+                  </motion.g>
+                );
+              })}
+            </svg>
+          </div>
         </div>
 
         <div>
@@ -176,7 +181,7 @@ export function Iterations({ complete = false }: { complete?: boolean }) {
               return (
                 <motion.li
                   key={s.commit}
-                  className={`grid grid-cols-[1.5rem_minmax(0,1fr)] gap-x-2 rounded-lg ${hover === i ? "bg-raised" : ""}`}
+                  className={`${styles.iterationItem} ${complete ? styles.iterationItemCompact : ""} grid grid-cols-[1.5rem_minmax(0,1fr)] gap-x-2 rounded-lg ${hover === i ? "bg-raised" : ""}`}
                   initial={false}
                   animate={shown ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
                   transition={shown ? t(DURATION.base) : t(0)}

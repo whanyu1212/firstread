@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { DURATION, useTransition } from "./motion";
 import { MODELS, jev } from "./series";
 import { useStep } from "./steps";
+import styles from "./AppendixFigures.module.css";
 
 /**
  * Act 2, staying honest: what the evals don't cover yet, each marked with where it stands so the
@@ -41,19 +42,19 @@ export function StillOpen({ at: from }: { at: number }) {
   const t = useTransition();
   const shown = step >= from;
   return (
-    <div>
-      <p className="mb-4 text-xl font-semibold tracking-tight">Still open</p>
-      <ul className="space-y-4">
+    <div className={styles.figure}>
+      <p className={`${styles.openHeading} mb-4 text-xl font-semibold tracking-tight`}>Still open</p>
+      <ul className="space-y-3">
         {ITEMS.map((item, i) => (
           <motion.li
             key={item.title}
-            className="border-l-2 border-ink/20 pl-4"
+            className={styles.openItem}
             initial={false}
             animate={shown ? { opacity: 1, x: 0 } : { opacity: 0, x: -8 }}
             transition={shown ? t(DURATION.base, 0.1 + i * 0.12) : t(0)}
           >
             <p className="text-lg font-semibold leading-snug">
-              <span className="mr-2 inline-block rounded-full border border-ink/25 px-2 align-[0.1em] text-fig font-medium text-ink/75">
+              <span className={`${styles.status} mr-2 inline-block rounded-full border px-2 align-[0.1em] text-fig font-medium`}>
                 {item.status}
               </span>
               {item.title}

@@ -6,11 +6,12 @@ import { DURATION, useTransition } from "./motion";
 import { MODELS, jev, others } from "./series";
 import { Stat } from "./Stat";
 import { useStep } from "./steps";
+import styles from "./AppendixFigures.module.css";
 
 /**
  * Slide 3: Jev vs four general models as ROC curves on the BHH test split, zoomed to the region
  * that matters (few false alarms, high recall), with recall at a 5% false-alarm rate marked. The
- * table under the chart is its legend and its labels: three of the five colours are below 3:1 on
+ * table beside the chart (below on narrow screens) is its legend: three colours are below 3:1 on
  * white, so no curve is identified by colour alone. From slides/data/bhh.json.
  */
 const X_MAX = 0.2;
@@ -56,99 +57,107 @@ export function Roc({ at }: { at: number }) {
   });
 
   return (
-    <figure>
-      <Stat
-        value={jev.run.auc.toFixed(3)}
-        label={`${jev.run.name}'s AUC`}
-        color={jev.color}
-        versus={`Best of the other four: ${best.run.name}, ${best.run.auc.toFixed(3)}.`}
-      />
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img"
-        aria-label={`ROC curves on the BHH test split. ${MODELS.map((m) => `${m.run.name}: AUC ${m.run.auc}, recall ${pct(recallAt(m.run.roc, MARK_FAR))} at a ${pct(MARK_FAR)} false-alarm rate`).join(". ")}.`}>
-        <defs>
-          <clipPath id="roc-plot">
-            <rect x={PAD.left} y={PAD.top - 4} width={W - PAD.left - PAD.right + 4} height={H - PAD.top - PAD.bottom + 4} />
-          </clipPath>
-        </defs>
-        {[0.6, 0.8, 1].map((v) => (
-          <g key={v}>
-            <line x1={x(0)} x2={x(X_MAX)} y1={y(v)} y2={y(v)} className="stroke-line" />
-            <text x={PAD.left - 10} y={y(v) + 5} textAnchor="end" className="fill-muted font-mono text-[16px]">
+    <figure className={`${styles.figure} ${styles.rocFigure}`}>
+      <div className={styles.statBand}>
+        <Stat
+          value={jev.run.auc.toFixed(3)}
+          label={`${jev.run.name}'s AUC`}
+          color={jev.color}
+          versus={`Best of the other four: ${best.run.name}, ${best.run.auc.toFixed(3)}.`}
+        />
+      </div>
+      <div className={`${styles.plotSurface} ${styles.rocPlot}`}>
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          className="w-full"
+          role="img"
+          aria-label={`ROC curves on the BHH test split. ${MODELS.map((m) => `${m.run.name}: AUC ${m.run.auc}, recall ${pct(recallAt(m.run.roc, MARK_FAR))} at a ${pct(MARK_FAR)} false-alarm rate`).join(". ")}.`}
+        >
+          <defs>
+            <clipPath id="roc-plot">
+              <rect x={PAD.left} y={PAD.top - 4} width={W - PAD.left - PAD.right + 4} height={H - PAD.top - PAD.bottom + 4} />
+            </clipPath>
+          </defs>
+          {[0.6, 0.8, 1].map((v) => (
+            <g key={v}>
+              <line x1={x(0)} x2={x(X_MAX)} y1={y(v)} y2={y(v)} className="stroke-line" />
+              <text x={PAD.left - 10} y={y(v) + 5} textAnchor="end" className="fill-muted font-mono text-[16px]">
+                {pct(v)}
+              </text>
+            </g>
+          ))}
+          {[0, 0.05, 0.1, 0.15, 0.2].map((v) => (
+            <text key={v} x={x(v)} y={H - PAD.bottom + 22} textAnchor={v === 0 ? "start" : v === X_MAX ? "end" : "middle"} className="fill-muted font-mono text-[16px]">
               {pct(v)}
             </text>
-          </g>
-        ))}
-        {[0, 0.05, 0.1, 0.15, 0.2].map((v) => (
-          <text key={v} x={x(v)} y={H - PAD.bottom + 22} textAnchor={v === 0 ? "start" : v === X_MAX ? "end" : "middle"} className="fill-muted font-mono text-[16px]">
-            {pct(v)}
+          ))}
+          <text x={x(X_MAX / 2)} y={H - 6} textAnchor="middle" className="fill-muted text-[16px]">
+            False alarms: no-risk messages flagged
           </text>
-        ))}
-        <text x={x(X_MAX / 2)} y={H - 6} textAnchor="middle" className="fill-muted text-[16px]">
-          False alarms: no-risk messages flagged
-        </text>
-        <text x={PAD.left - 44} y={14} className="fill-muted text-[16px]">
-          Recall: self-harm risk caught
-        </text>
+          <text x={PAD.left - 44} y={14} className="fill-muted text-[16px]">
+            Recall: self-harm risk caught
+          </text>
 
-        {/* Recall at the same false-alarm rate. */}
-        <motion.line
-          x1={x(MARK_FAR)} x2={x(MARK_FAR)} y1={y(1)} y2={y(Y_MIN)}
-          className="stroke-muted" strokeDasharray="3 3"
-          initial={false} animate={{ opacity: play ? 1 : 0 }}
-          transition={play ? t(DURATION.fast, DURATION.slow) : t(0)}
-        />
+          {/* Recall at the same false-alarm rate. */}
+          <motion.line
+            x1={x(MARK_FAR)} x2={x(MARK_FAR)} y1={y(1)} y2={y(Y_MIN)}
+            className="stroke-muted" strokeDasharray="3 3"
+            initial={false} animate={{ opacity: play ? 1 : 0 }}
+            transition={play ? t(DURATION.fast, DURATION.slow) : t(0)}
+          />
 
-        <g clipPath="url(#roc-plot)">
-          {drawOrder.map((m, i) => {
-            const pts = visible(m.run.roc);
-            const d = pts.map(([fx, fy], j) => `${j ? "L" : "M"}${x(fx).toFixed(1)},${y(fy).toFixed(1)}`).join(" ");
-            return (
-              <motion.path
-                key={m.id}
-                d={d}
-                fill="none"
-                stroke={m.color}
-                strokeWidth={m === jev ? 2.5 : 2}
-                strokeLinejoin="round"
-                initial={false}
-                animate={{ pathLength: play ? 1 : 0 }}
-                transition={play ? t(DURATION.slow, i * 0.12) : t(0)}
-              />
-            );
-          })}
-        </g>
+          <g clipPath="url(#roc-plot)">
+            {drawOrder.map((m, i) => {
+              const pts = visible(m.run.roc);
+              const d = pts.map(([fx, fy], j) => `${j ? "L" : "M"}${x(fx).toFixed(1)},${y(fy).toFixed(1)}`).join(" ");
+              return (
+                <motion.path
+                  key={m.id}
+                  d={d}
+                  fill="none"
+                  stroke={m.color}
+                  strokeWidth={m === jev ? 2.5 : 2}
+                  strokeLinejoin="round"
+                  initial={false}
+                  animate={{ pathLength: play ? 1 : 0 }}
+                  transition={play ? t(DURATION.slow, i * 0.12) : t(0)}
+                />
+              );
+            })}
+          </g>
 
-        {drawOrder.map((m) => (
-          <motion.circle key={m.id} cx={x(MARK_FAR)} cy={y(recallAt(m.run.roc, MARK_FAR))} r={m === jev ? 6 : 5}
-            fill={m.color} stroke="var(--color-canvas)" strokeWidth={2} {...show(DURATION.slow)} />
-        ))}
-        {/* Only Jev is labelled on the chart; the table below names every curve. Its label sits up
-            and to the left, clear of its curve, which runs on to the right. */}
-        <motion.text x={x(MARK_FAR) - 12} y={y(recallAt(jev.run.roc, MARK_FAR)) - 10} textAnchor="end"
-          className="fill-ink text-[16px] font-semibold" {...show(DURATION.slow + 0.2)}>
-          {jev.run.name} {pct(recallAt(jev.run.roc, MARK_FAR))}
-        </motion.text>
-      </svg>
+          {drawOrder.map((m) => (
+            <motion.circle key={m.id} cx={x(MARK_FAR)} cy={y(recallAt(m.run.roc, MARK_FAR))} r={m === jev ? 6 : 5}
+              fill={m.color} stroke="var(--color-canvas)" strokeWidth={2} {...show(DURATION.slow)} />
+          ))}
+          {/* Only Jev is labelled on the chart; the legend table names every curve. Its label sits up
+              and to the left, clear of its curve, which runs on to the right. */}
+          <motion.text x={x(MARK_FAR) - 12} y={y(recallAt(jev.run.roc, MARK_FAR)) - 10} textAnchor="end"
+            className="fill-ink text-[16px] font-semibold" {...show(DURATION.slow + 0.2)}>
+            {jev.run.name} {pct(recallAt(jev.run.roc, MARK_FAR))}
+          </motion.text>
+        </svg>
+      </div>
 
-      <table className="mt-1 w-full text-fig" aria-label="Legend">
+      <table className={`${styles.legend} mt-2 w-full text-fig`} aria-label="Legend">
         <thead className="text-fig text-muted">
           <tr>
-            <th scope="col" className="pb-1 text-left font-normal">Model</th>
-            <th scope="col" className="pb-1 text-right font-normal">AUC</th>
-            <th scope="col" className="pb-1 text-right font-normal">Recall at {pct(MARK_FAR)}</th>
+            <th scope="col" className="py-1.5 text-left font-normal">Model</th>
+            <th scope="col" className="py-1.5 text-right font-normal">AUC</th>
+            <th scope="col" className="py-1.5 text-right font-normal">Recall at {pct(MARK_FAR)}</th>
           </tr>
         </thead>
         <tbody className="tabular-nums">
           {MODELS.map((m) => (
             <tr key={m.id} className={m === jev ? "font-semibold" : undefined}>
-              <th scope="row" className={`py-px text-left ${m === jev ? "font-semibold" : "font-normal"}`}>
+              <th scope="row" className={`py-1 text-left ${m === jev ? "font-semibold" : "font-normal"}`}>
                 <span className="flex items-center gap-2">
                   <span className="h-[3px] w-5 rounded" style={{ background: m.color }} aria-hidden="true" />
                   {m.run.name}
                 </span>
               </th>
-              <td className="py-px text-right">{m.run.auc.toFixed(3)}</td>
-              <td className="py-px text-right">{pct(recallAt(m.run.roc, MARK_FAR))}</td>
+              <td className="py-1 text-right">{m.run.auc.toFixed(3)}</td>
+              <td className="py-1 text-right">{pct(recallAt(m.run.roc, MARK_FAR))}</td>
             </tr>
           ))}
         </tbody>

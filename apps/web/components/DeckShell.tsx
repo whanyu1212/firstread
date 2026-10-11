@@ -9,6 +9,7 @@ import type { SlideMeta } from "@/slides";
 import { Rail } from "./deck/Rail";
 import { StepContext } from "./deck/steps";
 import { Logo } from "./Logo";
+import styles from "./deck/DeckStyles.module.css";
 
 const NEXT_KEYS = new Set(["ArrowRight", "ArrowDown", "PageDown", " "]);
 const PREV_KEYS = new Set(["ArrowLeft", "ArrowUp", "PageUp"]);
@@ -79,12 +80,13 @@ export function DeckShell({ index, slides, children }: { index: number; slides: 
   return (
     <MotionConfig reducedMotion="user">
       <StepContext.Provider value={step}>
-        <main className="deck flex min-h-dvh flex-col text-ink">
-          <section className="slide mx-auto flex w-full max-w-7xl flex-1 flex-col justify-center px-6 py-12 sm:px-12">
+        <main className={`deck ${styles.shell}`}>
+          <section className={`slide ${styles.slide}`}>
+            {inAppendix && <div className={styles.appendixLabel}>FirstRead <span>/</span> Technical appendix <span className={styles.appendixNumber}>A{index - first + 1}</span></div>}
             {children}
           </section>
-          <footer className="px-4 pb-4 sm:px-6">
-            <div className="glass flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl px-4 py-2.5 text-sm sm:rounded-full sm:px-5">
+          <footer className={styles.footer}>
+            <div className={styles.footerBar}>
               <Link href="/" aria-label="FirstRead home" className="shrink-0">
                 <Logo size="sm" />
               </Link>
@@ -94,13 +96,13 @@ export function DeckShell({ index, slides, children }: { index: number; slides: 
                 {title}
               </p>
               <nav className="flex shrink-0 items-center gap-3 text-muted" aria-label="Slide controls">
-                <button type="button" onClick={back} disabled={atStart} aria-label="Back" className="hover:text-ink disabled:opacity-30">
+                <button type="button" onClick={back} disabled={atStart} aria-label="Back" className={styles.navButton}>
                   ←
                 </button>
                 <span className="font-mono whitespace-nowrap">
                   {inAppendix ? "A" : ""}{index - first + 1} / {total}
                 </span>
-                <button type="button" onClick={forward} disabled={atEnd} aria-label="Forward" className="hover:text-ink disabled:opacity-30">
+                <button type="button" onClick={forward} disabled={atEnd} aria-label="Forward" className={styles.navButton}>
                   →
                 </button>
                 {appendixStart <= slides.length && (

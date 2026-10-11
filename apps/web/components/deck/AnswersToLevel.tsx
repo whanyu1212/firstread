@@ -13,6 +13,7 @@ import { USER_SIGNAL_GROUPS, USER_SIGNAL_LABELS } from "../signals";
 import { DURATION, useTransition } from "./motion";
 import { Glass } from "./Glass";
 import { Stack, useStep } from "./steps";
+import styles from "./AppendixFigures.module.css";
 
 /**
  * Act 2's first slide: how one message becomes a level. Step 1, Jev's answers; step 2, the rules
@@ -47,8 +48,8 @@ export function AnswersToLevel() {
 function Panel({ at, until, children }: { at: number; until?: number; children: ReactNode }) {
   return (
     <Glass at={at} until={until}>
-      <figure className="space-y-5 text-fig">
-        <p className="ml-auto w-fit max-w-[90%] rounded-xl bg-user px-4 py-2.5 text-lg">{turn.user}</p>
+      <figure className={`${styles.figure} ${styles.policyFigure} space-y-5 text-fig`}>
+        <p className={`${styles.message} ml-auto w-fit max-w-[90%] rounded-xl bg-user px-4 py-2.5 text-lg`}>{turn.user}</p>
         {children}
       </figure>
     </Glass>
@@ -57,7 +58,7 @@ function Panel({ at, until, children }: { at: number; until?: number; children: 
 
 function Heading({ title, detail }: { title: string; detail: string }) {
   return (
-    <p className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+    <p className={`${styles.heading} flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1`}>
       <span className="text-xl font-semibold tracking-tight">{title}</span>
       <span className="font-mono text-fig text-muted">{detail}</span>
     </p>
@@ -77,11 +78,11 @@ function Answers() {
         {columns.map((groups, c) => (
           <div key={c} className="space-y-4">
             {groups.map((g) => (
-              <div key={g.title}>
+              <div key={g.title} className={styles.answerGroup}>
                 <p className="mb-1.5 text-fig text-muted">{g.title}</p>
                 <ul className="space-y-1.5">
                   {g.keys.map((k, i) => (
-                    <li key={k} className="grid grid-cols-[minmax(0,1fr)_5rem_2.75rem] items-center gap-2 text-fig leading-tight">
+                    <li key={k} className={`${styles.answerRow} grid grid-cols-[minmax(0,1fr)_5rem_2.75rem] items-center gap-2 text-fig leading-tight`}>
                       <span>{USER_SIGNAL_LABELS[k]}</span>
                       <span className="h-2 overflow-hidden rounded-full bg-line" aria-hidden="true">
                         <motion.span
@@ -128,9 +129,9 @@ function Ladder() {
   return (
     <div>
       <Heading title="The rules" detail="policy.ts" />
-      <div className="space-y-3">
+      <div className={styles.ruleGrid}>
         {LEVELS.map((l) => (
-          <div key={l}>
+          <div key={l} className={styles.ruleGroup}>
             <p className="mb-1 flex items-center gap-2 text-fig font-semibold tracking-wide">
               <span className="size-2.5 rounded-full" style={{ background: LEVEL_COLOR[l] }} aria-hidden="true" />
               {LEVEL_LABEL[l]}
@@ -141,7 +142,7 @@ function Ladder() {
                 .map((r) => {
                   const delay = r.lit ? 0.4 + lit++ * 0.12 : 0;
                   return (
-                    <li key={ruleText(r)} className="relative grid grid-cols-[minmax(0,1fr)_auto_1.25rem] items-center gap-3 rounded-lg px-3 py-1.5 text-fig">
+                    <li key={ruleText(r)} className={`${styles.ruleRow} relative grid grid-cols-[minmax(0,1fr)_auto_1.25rem] items-center gap-3 rounded-lg px-3 py-1.5 text-fig`}>
                       {r.lit && (
                         <motion.span
                           className="absolute inset-0 rounded-lg"
@@ -192,7 +193,7 @@ function Conversation() {
     <div>
       <Heading title="The conversation" detail="risk.ts" />
       {levels.length > 0 && (
-        <p className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-fig">
+        <p className={`${styles.history} mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-fig`}>
           <span className="text-muted">This recording so far:</span>
           {levels.map((l, i) => (
             <span key={i} className="flex items-center gap-1.5">
@@ -205,7 +206,7 @@ function Conversation() {
       )}
       <ul className="space-y-3">
         {facts.map((f) => (
-          <li key={f.title} className="text-fig leading-snug">
+          <li key={f.title} className={`${styles.fact} text-fig leading-snug`}>
             <strong className="font-semibold">{f.title}</strong> <span className="text-ink/75">{f.detail}</span>
           </li>
         ))}
