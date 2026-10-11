@@ -1,12 +1,12 @@
 import type { ChatData, ChatMessage } from "./chat";
 
 /**
- * A conversation recorded through the real chat route (scripts/record-replay.ts): per turn, the
+ * A conversation recorded through the real turn pipeline (scripts/record-replay.ts): per turn, the
  * user's message, the reply that went out, and the data parts the page received. Turned back into
  * chat messages, it renders with the same components as a live chat (the deck's replay, HY-159;
  * the demo's keyless replays, HY-166).
  */
-export type RecordedTurn = { user: string; reply: string; data: Partial<ChatData> };
+export type RecordedTurn = { user: string; reply: string; draft?: string; data: Partial<ChatData> };
 export type Recording = { scenario: string; title: string; recordedAt: string; turns: RecordedTurn[] };
 
 /** How far a replay has got: the latest turn shown, and how much of it. */
@@ -53,6 +53,9 @@ export function replyMessage(turn: RecordedTurn, i: number, phase: "checked" | "
   const data = (Object.entries(turn.data) as [keyof ChatData, unknown][])
     .filter(([name]) => phase === "done" || name === "check")
     .map(([name, value]) => ({ type: `data-${name}`, data: value }) as ChatMessage["parts"][number]);
+  if (phase === "done" && turn.draft !== undefined) {
+    data.push({ type: "data-recordedDraft", data: { text: turn.draft } });
+  }
   return {
     id: `reply-${play}${i}`,
     role: "assistant",

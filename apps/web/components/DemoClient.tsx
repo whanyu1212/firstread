@@ -4,25 +4,18 @@ import type { RiskLevel } from "firstread";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "@/lib/chat";
-import { GROUPS, SCENARIOS } from "@/lib/scenarios";
-import { Composer, CompanionReply, dataPart, errorMessage, messageText, UserBubble } from "./CompanionChat";
-import { DemoNotice } from "./DemoNotice";
-import { Logo } from "./Logo";
-import { MarginKey, MarginRule, NowSummary, TurnNote } from "./Margin";
 import { LIMITS } from "@/lib/limits";
+import { assessmentUnavailable } from "@/lib/margin";
+import { SCENARIOS, type Scenario } from "@/lib/scenarios";
+import { Composer, dataPart, errorMessage } from "./CompanionChat";
+import { DemoNotice } from "./DemoNotice";
+import { DemoTurn } from "./DemoTurn";
+import { Logo } from "./Logo";
+import { NowSummary } from "./Margin";
 import { OpenAIKeyField } from "./OpenAIKeyField";
 import { type CompanionChatState, useCompanionChat } from "./useCompanionChat";
 
-/**
- * Every row of the demo shares these columns, so a turn's note sits level with the turn: the
- * conversation, the margin rule, FirstRead's notes. On a phone the rule runs down the left edge
- * and each note folds under its reply.
- */
-const ROW = "grid grid-cols-[1.75rem_minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_2.5rem_22rem]";
-
-/** One user message and the reply to it. */
 type Exchange = { user: ChatMessage; reply: ChatMessage | undefined };
-
 function exchanges(messages: ChatMessage[]): Exchange[] {
   const out: Exchange[] = [];
   for (const m of messages) {
@@ -31,315 +24,180 @@ function exchanges(messages: ChatMessage[]): Exchange[] {
   }
   return out;
 }
-
-const smooth = (): ScrollBehavior =>
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
-
 const levelAfter = (e: Exchange | undefined): RiskLevel | null => (e?.reply && dataPart(e.reply, "risk")?.level) || null;
+const recommended = SCENARIOS.find((s) => s.id === "crisis")!;
+const button = "min-h-10 rounded-lg border border-ink/10 bg-canvas px-3 py-2 text-sm font-medium transition-colors hover:bg-raised disabled:opacity-40";
+const scenarioNames: Record<string, string> = {
+  crisis: "See FirstRead intervene",
+  hyperbole: "A harmless message",
+  "past-window": "Risk remembered across turns",
+  person: "A request for a person",
+  "long-safe-trip": "A longer, calm conversation",
+};
 
-/**
- * /demo, on one screen: the controls and the notice on glass at the top, then the conversation,
- * which is the only thing that scrolls, with the message box pinned under it.
- */
 export function DemoClient({ serverKey }: { serverKey: boolean }) {
   const chat = useCompanionChat();
-  const [keyOpen, setKeyOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [scenariosOpen, setScenariosOpen] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
-  // When each message was sent, for the live strip. Written the first time a message is rendered,
-  // which is the moment it's sent; idempotent, so a repeated render doesn't move it.
-  const sentAt = useRef(new Map<string, number>());
+  const following = useRef(true);
+  const firstMessage = chat.messages[0]?.id;
   const rows = exchanges(chat.messages);
-  for (const e of rows) if (!sentAt.current.has(e.user.id)) sentAt.current.set(e.user.id, Date.now());
-  // What FirstRead adds to a turn: the reply check, the median over the turns on screen.
-  const replyChecks = rows
-    .map((e) => (e.reply ? dataPart(e.reply, "timing")?.replyCheckMs : null))
-    .filter((ms): ms is number => typeof ms === "number")
-    .sort((a, b) => a - b);
-  const addedMs = replyChecks.length ? replyChecks[Math.floor(replyChecks.length / 2)]! : null;
-  const latestRisk = [...chat.messages]
-    .reverse()
-    .map((m) => dataPart(m, "risk"))
-    .find(Boolean);
-  // Use this turn's result: an older failed assessment must not leak into a new turn or replay.
   const latestReply = rows.at(-1)?.reply;
-  // The route streams audit before risk. Only this turn's risk part completes its summary.
   const latestTurnRisk = latestReply && dataPart(latestReply, "risk");
+  const latestRisk = [...chat.messages].reverse().map((m) => dataPart(m, "risk")).find(Boolean);
+  const summaryPending = chat.busy && !latestTurnRisk;
+  const summaryUnavailable = assessmentUnavailable(latestReply && dataPart(latestReply, "check"), latestReply && dataPart(latestReply, "audit"));
+  const summary = <NowSummary risk={latestRisk} check={latestReply && dataPart(latestReply, "check")} audit={latestReply && dataPart(latestReply, "audit")} pending={summaryPending} waiting />;
+  const liveBusy = chat.busy && !chat.replay;
+  const activeScenario = chat.replay?.scenario ?? chat.playing;
+  const canRunLive = serverKey || Boolean(chat.key);
 
-  // Keep the latest turn in view as messages and notes come in.
+  useEffect(() => { following.current = true; }, [firstMessage]);
   useEffect(() => {
     const el = scroller.current;
-    if (el) el.scrollTo({ top: el.scrollHeight, behavior: smooth() });
+    if (el && following.current) el.scrollTo({ top: el.scrollHeight, behavior: "instant" });
   }, [chat.messages, chat.busy]);
+
+  function play(scenario: Scenario) {
+    chat.playScenario(scenario);
+    setScenariosOpen(false);
+  }
+  function startLive() {
+    chat.newConversation();
+    setScenariosOpen(false);
+    if (!canRunLive) setSettingsOpen(true);
+  }
 
   return (
     <>
-      <Controls chat={chat} keyOpen={keyOpen} onToggleKey={() => setKeyOpen(!keyOpen)} />
-      <DemoNotice />
-      {(keyOpen || (!chat.key && chat.error)) && (
-        <div className="glass shrink-0 rounded-xl p-4">
-          <OpenAIKeyField
-            value={chat.key}
-            onSave={(k) => {
-              chat.setKey(k);
-              setKeyOpen(false);
-            }}
-            onForget={chat.forgetKey}
-          />
+      <nav aria-label="Demo navigation" className="flex shrink-0 flex-wrap items-center justify-between gap-3 py-1">
+        <Link href="/" className="rounded-md"><Logo /><span className="sr-only"> home</span></Link>
+        <div className="flex items-center gap-2">
+          <Link href="/deck/1" className="px-2 text-sm text-ink/75 hover:text-accent">The deck</Link>
+          <button type="button" onClick={() => setSettingsOpen(!settingsOpen)} aria-expanded={settingsOpen} aria-controls="demo-settings" className={button}>Settings</button>
+          <button type="button" onClick={startLive} disabled={liveBusy} className={button}>{rows.length > 0 && !chat.replay ? "New chat" : "Try live"}</button>
         </div>
+      </nav>
+      <DemoNotice />
+      {(settingsOpen || (!chat.key && chat.error)) && (
+        <section id="demo-settings" aria-label="Demo settings" className="glass shrink-0 rounded-2xl p-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <h2 className="mb-2 text-sm font-semibold">OpenAI key</h2>
+              <OpenAIKeyField value={chat.key} onSave={(k) => { chat.setKey(k); setSettingsOpen(false); }} onForget={chat.forgetKey} />
+            </div>
+            <div className="text-sm">
+              <button type="button" role="switch" aria-checked={chat.jevDown} disabled={liveBusy} onClick={() => chat.setJevDown(!chat.jevDown)} className={`${button} flex items-center gap-3`}>
+                <span aria-hidden="true" className={`size-3 rounded-full ${chat.jevDown ? "bg-danger" : "bg-ink/20"}`} />
+                Simulate Jev being down
+              </button>
+              <p className="mt-2 max-w-md leading-relaxed text-muted">Applies to live messages only. FirstRead holds the draft when a check fails. Recordings use their original results.</p>
+            </div>
+          </div>
+        </section>
       )}
 
-      <section aria-label="Conversation" className="glass flex min-h-80 flex-1 flex-col overflow-hidden rounded-2xl">
-        {rows.length > 0 && (
-          <header className={`${ROW} gutter`}>
-            <div className="col-span-2 px-4 pt-3 pb-2 lg:col-span-1 lg:col-start-3 lg:px-5 lg:py-4">
-              <NowSummary
-                risk={latestRisk}
-                check={latestReply && dataPart(latestReply, "check")}
-                audit={latestReply && dataPart(latestReply, "audit")}
-                pending={chat.busy && !latestTurnRisk}
-                waiting
-              />
+      <div className="flex min-h-[36rem] flex-1 flex-col gap-3 lg:min-h-0 lg:flex-row">
+        <aside aria-label="Scenario browser" className="flex shrink-0 flex-col lg:w-64">
+          <button type="button" className={`${button} flex items-center justify-between lg:hidden`} onClick={() => setScenariosOpen(!scenariosOpen)} aria-expanded={scenariosOpen} aria-controls="scenario-browser">
+            <span>Recorded scenarios <span className="text-muted">({SCENARIOS.length})</span></span><span aria-hidden="true">{scenariosOpen ? "−" : "+"}</span>
+          </button>
+          <div id="scenario-browser" className={`${scenariosOpen ? "block" : "hidden"} mt-2 overflow-y-auto rounded-2xl border border-ink/10 bg-white/75 p-4 lg:mt-0 lg:block`}>
+            <h2 className="text-sm font-semibold">Recorded scenarios</h2>
+            <p className="mt-1 text-xs text-muted">Real runs. No API key needed.</p>
+            <div className="mt-4 space-y-2">
+              {[recommended, ...SCENARIOS.filter((s) => s.id !== recommended.id)].map((s) => (
+                <button key={s.id} type="button" onClick={() => play(s)} disabled={liveBusy} aria-pressed={activeScenario?.id === s.id}
+                  className={`w-full rounded-xl border p-3 text-left transition-colors disabled:opacity-40 ${activeScenario?.id === s.id ? "border-accent/35 bg-accent/[0.07]" : "border-transparent hover:border-line hover:bg-white"}`}>
+                  {s.id === recommended.id && <span className="mb-1.5 block text-[0.7rem] font-semibold tracking-wider text-accent uppercase">Start here</span>}
+                  <span className="block text-sm font-medium">{scenarioNames[s.id] ?? s.title}</span>
+                  <span className="mt-1 block text-xs text-muted">{s.messages.length} turns{s.id === recommended.id ? " · Catch risk, replace, escalate" : " · Recorded"}</span>
+                </button>
+              ))}
             </div>
-            <div className="col-span-2 self-center px-4 pb-3 text-sm text-ink/75 lg:col-span-1 lg:col-start-1 lg:row-start-1 lg:max-w-[60ch] lg:px-6 lg:py-4">
-              <p className="hidden sm:block">
-                {chat.replay
-                  ? `“${chat.replay.scenario.title}”, recorded ${recordedOn(chat.replay.recordedAt)} through the live pipeline: real Jev, the real companion, real timings. ${chat.replay.scenario.shows}${chat.jevDown ? " Jev was up when this was recorded; “Simulate Jev being down” applies to live messages." : ""}`
-                  : chat.jevDown
-                    ? "Jev is switched off for this conversation. Every FirstRead check fails, so watch it fail closed: no reply goes out unchecked."
-                    : chat.playing
-                      ? `Playing “${chat.playing.title}” live. ${chat.playing.shows}`
-                      : "Each reply appears only once FirstRead has checked it."}
-              </p>
-              {chat.replay && <ReplayControls chat={chat} canRunLive={serverKey || Boolean(chat.key)} />}
-            </div>
-          </header>
-        )}
-
-        <div
-          ref={scroller}
-          className="margin-paper gutter-scroll min-h-0 flex-1 overflow-y-auto border-y border-ink/8 bg-canvas"
-          aria-live="polite"
-        >
-          {rows.length === 0 ? (
-            <EmptyState chat={chat} serverKey={serverKey} onAddKey={() => setKeyOpen(true)} />
-          ) : (
-            rows.map((e, i) => {
-              const pending = !e.reply || !dataPart(e.reply, "audit");
-              return (
-                <article key={e.user.id} className={ROW} aria-label={`Turn ${i + 1}`}>
-                  <div className="col-start-2 row-start-1 space-y-3 py-4 pr-4 pl-1 lg:col-start-1 lg:px-6">
-                    <UserBubble text={messageText(e.user)} />
-                    <CompanionReply message={e.reply} pending={pending && chat.busy} />
-                  </div>
-                  <div className="col-start-1 row-span-2 row-start-1 lg:col-start-2 lg:row-span-1">
-                    <MarginRule before={i === 0 ? null : levelAfter(rows[i - 1])} after={pending ? null : levelAfter(e)} />
-                  </div>
-                  <div className="col-start-2 row-start-2 mr-4 mb-4 rounded-lg border border-line bg-margin p-4 lg:col-start-3 lg:row-start-1 lg:m-0 lg:rounded-none lg:border-0 lg:bg-transparent lg:px-5 lg:py-4">
-                    <TurnNote
-                      reply={e.reply}
-                      before={i === 0 ? null : levelAfter(rows[i - 1])}
-                      startedAt={sentAt.current.get(e.user.id)}
-                      live={pending && chat.busy}
-                      elapsed={chat.replay ? () => chat.replay!.elapsedSince(i) : undefined}
-                    />
-                  </div>
-                </article>
-              );
-            })
+          </div>
+          {rows.length > 0 && (
+            <header aria-label="Conversation assessment" className="mt-3 rounded-2xl border border-ink/10 bg-white/75 p-4">
+              <div className="hidden lg:block">
+                <p className="mb-2 text-xs font-medium text-muted">Conversation assessment</p>
+                {summary}
+              </div>
+              <details className="lg:hidden">
+                <summary className={`cursor-pointer text-sm font-medium ${summaryUnavailable ? "text-danger" : "text-ink"}`}>
+                  {summaryUnavailable ? "Assessment unavailable" : summaryPending ? "Assessment pending" : `Conversation: ${latestRisk?.level ?? "awaiting assessment"}`}
+                </summary>
+                <div className="mt-3">{summary}</div>
+              </details>
+            </header>
           )}
-          {chat.error && <p className="px-6 py-4 text-sm text-danger lg:max-w-[calc(100%-24.5rem)]">{errorMessage(chat.error)}</p>}
-        </div>
+        </aside>
 
-        <footer className={`${ROW} gutter`}>
-          <div className="col-span-2 p-3 lg:col-span-1 lg:px-6 lg:py-3">
-            <Composer chat={chat} />
+        <section aria-label="Conversation" className="flex min-h-[30rem] min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-ink/10 bg-canvas shadow-[0_18px_60px_-30px_rgb(23_23_23/20%)] lg:min-h-0">
+          <div className="shrink-0 border-b border-line px-4 py-4 sm:px-6">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h1 className="text-lg font-semibold tracking-tight">{activeScenario ? scenarioNames[activeScenario.id] ?? activeScenario.title : "FirstRead in action"}</h1>
+              <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${chat.replay ? "bg-accent/10 text-accent" : "bg-raised text-muted"}`}>{chat.replay ? "Recorded run" : "Live playground"}</span>
+            </div>
+            <p className="mt-1 text-sm text-muted">{chat.replay ? `Recorded ${recordedOn(chat.replay.recordedAt)} · ${rows.length} of ${chat.replay.scenario.messages.length} turns` : "Write a synthetic message. See what FirstRead lets through."}</p>
+            {chat.replay && <ReplayControls chat={chat} canRunLive={canRunLive} onFollow={() => { following.current = true; }} />}
+            {chat.playing && !chat.replay && <button type="button" className={`${button} mt-2`} onClick={chat.stopScenario}>Stop after this turn</button>}
+            {chat.jevDown && !chat.replay && <p role="status" className="mt-2 text-sm font-medium text-danger">Outage simulation on. Live checks will fail closed.</p>}
           </div>
-          <div className="hidden lg:col-start-3 lg:block lg:px-5 lg:py-3">
-            <MarginKey addedMs={addedMs} />
+
+          <div ref={scroller} onScroll={() => {
+            const el = scroller.current;
+            if (el) following.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+          }} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            {rows.length === 0 && activeScenario ? (
+              <p className="px-6 py-10 text-sm text-muted" role="status">{chat.replay?.paused ? "Replay paused. Resume when you’re ready." : "Starting the scenario…"}</p>
+            ) : rows.length === 0 ? (
+              <div className="flex min-h-64 h-full flex-col items-center justify-center px-6 py-10 text-center">
+                <span className="mb-5 flex size-12 items-center justify-center rounded-2xl bg-accent/10 font-mono text-xl text-accent" aria-hidden="true">↳</span>
+                <h2 className="text-2xl font-semibold tracking-tight">Watch one reply change.</h2>
+                <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted">A message signals distress. FirstRead checks the draft, intervenes when needed, and shows why.</p>
+                <button type="button" onClick={() => play(recommended)} className="mt-6 min-h-11 rounded-xl bg-ink px-5 py-3 text-sm font-medium text-white hover:bg-ink/85">Play recommended scenario <span aria-hidden="true">→</span></button>
+                <p className="mt-3 text-xs text-muted">{recommended.messages.length} turns · Recorded with real Jev checks</p>
+              </div>
+            ) : rows.map((e, i) => (
+              <DemoTurn key={e.user.id} user={e.user} reply={e.reply} index={i} before={i === 0 ? null : levelAfter(rows[i - 1])} busy={chat.busy && i === rows.length - 1} recorded={Boolean(chat.replay)} onInspect={() => { following.current = false; chat.replay?.setPaused(true); }} />
+            ))}
+            {chat.error && <p role="alert" className="px-6 py-4 text-sm text-danger">{errorMessage(chat.error)}</p>}
           </div>
-        </footer>
-      </section>
+
+          <footer className="shrink-0 border-t border-line bg-margin px-4 py-3 sm:px-6">
+            {chat.replay ? (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs text-muted">Inspect any turn to pause and see the evidence.</p>
+                <button type="button" onClick={startLive} className={button}>Start a live chat <span aria-hidden="true">→</span></button>
+              </div>
+            ) : (
+              <>
+                <Composer chat={chat} />
+                <p className="mt-2 text-xs text-muted">{chat.key ? "Using your OpenAI key." : serverKey ? `Demo key available · up to ${LIMITS.turnsPerChat} messages per conversation.` : "Add an OpenAI key in Settings to chat live."} Synthetic messages only.</p>
+              </>
+            )}
+          </footer>
+        </section>
+      </div>
     </>
   );
 }
 
-function Controls({ chat, keyOpen, onToggleKey }: { chat: CompanionChatState; keyOpen: boolean; onToggleKey: () => void }) {
-  return (
-    <div className="glass flex shrink-0 flex-wrap items-center gap-2 rounded-2xl px-3 py-2 text-sm">
-      <h1 className="mr-2">
-        <Link href="/" className="block rounded-md">
-          <Logo />
-          <span className="sr-only">: the demo</span>
-        </Link>
-      </h1>
-      <label className="sr-only" htmlFor="scenario">
-        Play a scenario
-      </label>
-      <select
-        id="scenario"
-        className="h-9 w-48 rounded-md border border-line bg-canvas pr-8 pl-3 hover:bg-raised sm:w-52"
-        value={chat.playing?.id ?? chat.replay?.scenario.id ?? ""}
-        onChange={(e) => {
-          const s = SCENARIOS.find((x) => x.id === e.target.value);
-          if (s) chat.playScenario(s);
-        }}
-        disabled={chat.busy && !chat.playing}
-      >
-        <option value="">Play a scenario</option>
-        {GROUPS.map((g) => (
-          <optgroup key={g} label={g}>
-            {SCENARIOS.filter((s) => s.group === g).map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.title}
-              </option>
-            ))}
-          </optgroup>
-        ))}
-      </select>
-      {chat.playing && (
-        <button type="button" onClick={chat.stopScenario} className="flex h-9 items-center gap-2 rounded-md border border-line bg-canvas px-3 hover:bg-raised">
-          Stop
-        </button>
-      )}
-      <button type="button" onClick={chat.newConversation} className="flex h-9 items-center gap-2 rounded-md border border-line bg-canvas px-3 hover:bg-raised">
-        <span className="sm:hidden">New</span>
-        <span className="hidden sm:inline">New conversation</span>
-      </button>
-
-      <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
-        <button
-          type="button"
-          onClick={onToggleKey}
-          aria-expanded={keyOpen}
-          className="flex h-9 items-center gap-2 rounded-md border border-line bg-canvas px-3 hover:bg-raised"
-        >
-          <span className={`size-2 rounded-full ${chat.key ? "bg-accent" : "border border-muted"}`} aria-hidden="true" />
-          {chat.key ? (
-            <>
-              Your key <span className="font-mono text-muted">…{chat.key.slice(-4)}</span>
-            </>
-          ) : (
-            <>
-              <span className="sm:hidden">Add key</span>
-              <span className="hidden sm:inline">Add your OpenAI key</span>
-            </>
-          )}
-        </button>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={chat.jevDown}
-          onClick={() => chat.setJevDown(!chat.jevDown)}
-          className="flex h-9 items-center gap-2.5 rounded-md border border-line bg-canvas pr-3 pl-2.5 hover:bg-raised"
-        >
-          <span
-            aria-hidden="true"
-            className={`relative h-5 w-9 rounded-full transition-colors ${chat.jevDown ? "bg-level-crisis" : "bg-muted/30"}`}
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 size-4 rounded-full bg-canvas shadow-sm transition-transform motion-reduce:transition-none ${chat.jevDown ? "translate-x-4" : ""}`}
-            />
-          </span>
-          <span className="sm:hidden">Jev down</span>
-          <span className="hidden sm:inline">Simulate Jev being down</span>
-        </button>
-        <Link href="/deck/1" className="px-2 text-accent hover:underline">
-          <span className="sm:hidden">Talk</span>
-          <span className="hidden sm:inline">The talk</span>
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-/** An empty conversation: the scenarios, ready to play, and what typing your own message runs on. */
-function EmptyState({ chat, serverKey, onAddKey }: { chat: CompanionChatState; serverKey: boolean; onAddKey: () => void }) {
-  return (
-    <div className={ROW}>
-      <div className="col-span-2 p-5 lg:col-span-1 lg:p-6">
-        <p className="text-xl font-semibold tracking-tight">Play a scripted conversation, or write your own below.</p>
-        <p className="mt-1 text-sm text-muted">
-          Each one replays a run recorded through the live pipeline, so it needs no key.
-        </p>
-        {GROUPS.map((g) => (
-          <section key={g} className="mt-5" aria-labelledby={`group-${g}`}>
-            <h2 id={`group-${g}`} className="text-sm font-medium text-ink/75">
-              {g}
-            </h2>
-            <ul className="mt-2 grid gap-2 sm:grid-cols-2">
-              {SCENARIOS.filter((s) => s.group === g).map((s) => (
-                <li key={s.id}>
-                  <button
-                    type="button"
-                    onClick={() => chat.playScenario(s)}
-                    className="h-full w-full rounded-lg border border-line bg-margin px-4 py-3 text-left transition-colors hover:border-muted hover:bg-raised motion-reduce:transition-none"
-                  >
-                    <span className="block font-medium">{s.title}</span>
-                    <span className="mt-0.5 block text-sm text-muted">{s.shows}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
-        {chat.jevDown && (
-          <p className="mt-5 text-sm text-muted">
-            Jev is switched off for live messages. Every FirstRead check will fail, so you can watch it fail closed: no
-            reply goes out unchecked. The scenarios are recordings, made with Jev up.
-          </p>
-        )}
-        {!chat.key && (
-          <p className="mt-5 text-sm text-muted">
-            {serverKey
-              ? `Your own messages run live on the demo's key, up to ${LIMITS.turnsPerChat} per conversation. To go further, `
-              : "Your own messages run live, with your OpenAI key. "}
-            <button type="button" onClick={onAddKey} className="text-accent hover:underline">
-              {serverKey ? "add your own key" : "Add your key"}
-            </button>
-            {serverKey && "."}
-          </p>
-        )}
-      </div>
-      <div className="hidden lg:col-start-3 lg:block lg:p-6">
-        <NowSummary risk={undefined} />
-      </div>
-    </div>
-  );
-}
-
-const recordedOn = (iso: string) => new Date(iso).toLocaleDateString("en-SG", { day: "numeric", month: "long" });
-
-/** A replay's controls: speed, skip to the end, and running the same scenario live when there's a key. */
-function ReplayControls({ chat, canRunLive }: { chat: CompanionChatState; canRunLive: boolean }) {
+const recordedOn = (iso: string) => new Date(iso).toLocaleDateString("en-SG", { day: "numeric", month: "short" });
+function ReplayControls({ chat, canRunLive, onFollow }: { chat: CompanionChatState; canRunLive: boolean; onFollow: () => void }) {
   const replay = chat.replay!;
-  const button = "h-8 rounded-md border border-line bg-canvas px-3 text-ink hover:bg-raised disabled:opacity-40";
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-2">
-      <span className="text-muted sm:hidden">Recorded {recordedOn(replay.recordedAt)}</span>
-      {replay.finished ? (
-        <button type="button" onClick={() => chat.playScenario(replay.scenario)} className={button}>
-          Play again
-        </button>
-      ) : (
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      {replay.finished ? <button type="button" onClick={() => chat.playScenario(replay.scenario)} className={button}>Play again</button> : (
         <>
-          <button
-            type="button"
-            aria-pressed={replay.speed === 2}
-            onClick={() => replay.setSpeed(replay.speed === 2 ? 1 : 2)}
-            className={`${button} ${replay.speed === 2 ? "border-ink/40 bg-raised" : ""}`}
-          >
-            2× speed
-          </button>
-          <button type="button" onClick={replay.skip} className={button}>
-            Skip to end
-          </button>
+          <button type="button" onClick={() => { if (replay.paused) onFollow(); replay.setPaused(!replay.paused); }} className={button}>{replay.paused ? "Resume" : "Pause"}</button>
+          <button type="button" aria-pressed={replay.speed === 2} onClick={() => replay.setSpeed(replay.speed === 2 ? 1 : 2)} className={`${button} ${replay.speed === 2 ? "border-accent text-accent" : ""}`}>2× speed</button>
+          <button type="button" onClick={() => { onFollow(); replay.skip(); }} className={button}>Skip to end</button>
         </>
       )}
-      {canRunLive && (
-        <button type="button" onClick={() => chat.playLive(replay.scenario)} className={button}>
-          Run it live
-        </button>
-      )}
+      {canRunLive && <button type="button" onClick={() => chat.playLive(replay.scenario)} className={button}>Run live</button>}
+      {replay.finished && <span className="text-xs text-muted">Replay complete</span>}
     </div>
   );
 }

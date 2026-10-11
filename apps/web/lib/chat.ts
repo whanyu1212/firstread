@@ -15,6 +15,8 @@ export const MAX_MESSAGE_LENGTH = 2000;
 
 /** Data parts the chat route sends alongside the reply, for the risk panel (HY-19). */
 export type ChatData = {
+  /** The companion's original draft in an opt-in synthetic recording. Never sent by live chat. */
+  recordedDraft: { text: string };
   /** The user check, as soon as it answers, while the companion is still working. */
   check: { ok: true; level: RiskLevel; ms: number } | { ok: false; reason: string; ms: number };
   /** What FirstRead decided for the turn. */

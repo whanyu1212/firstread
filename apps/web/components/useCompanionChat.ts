@@ -15,10 +15,11 @@ const SCENARIO_PAUSE_MS = 1500;
 /** How often a replay checks whether its next moment has come. */
 const REPLAY_TICK_MS = 50;
 /** A replay's first message shows at once, so the click visibly starts it. */
-const scheduleOf = (rec: Recording) => replaySchedule(rec, { startMs: 0 });
+// Leave time to notice the decision and open its evidence; the deck keeps its own faster pace.
+const scheduleOf = (rec: Recording) => replaySchedule(rec, { startMs: 0, pauseMs: 6000 });
 
 /** A recording being replayed: no network, no key. `play` keeps each play's message ids apart. */
-type Replay = { scenario: Scenario; rec: Recording; play: string; shown: Shown | null; speed: 1 | 2; stopped: boolean };
+type Replay = { scenario: Scenario; rec: Recording; play: string; shown: Shown | null; speed: 1 | 2; stopped: boolean; paused: boolean };
 
 /**
  * The demo's chat state, shared by the chat and the risk panel: the visitor's key, the "Jev down"
@@ -74,14 +75,14 @@ export function useCompanionChat() {
       setScenario(null);
       setChatId(crypto.randomUUID());
       // With reduced motion on, the replay jumps to its end, as "Skip to end" does.
-      setReplay({ scenario: s, rec, play: `${Date.now()}-`, shown: reduce ? finalStep(rec) : null, speed: 1, stopped: reduce });
+      setReplay({ scenario: s, rec, play: `${Date.now()}-`, shown: reduce ? finalStep(rec) : null, speed: 1, stopped: reduce, paused: false });
     },
     [playLive, reduce],
   );
 
   // Advance a replay through its recorded timings, at its speed. Virtual time keeps the place
   // when the speed changes mid-play.
-  const replayKey = replay && !replay.stopped ? replay.play : null;
+  const replayKey = replay && !replay.stopped && !replay.paused ? replay.play : null;
   const speed = replay?.speed ?? 1;
   const clock = useRef({ virtual: 0, last: 0 });
   useEffect(() => {
@@ -176,6 +177,8 @@ export function useCompanionChat() {
       recordedAt: replay.rec.recordedAt,
       speed: replay.speed,
       finished: replayFinished,
+      paused: replay.paused,
+      setPaused: (paused: boolean) => setReplay((r) => (r ? { ...r, paused } : r)),
       setSpeed: (s: 1 | 2) => setReplay((r) => (r ? { ...r, speed: s } : r)),
       /**
        * Recorded seconds since a turn's message appeared, read from the replay's own clock, so a
@@ -183,7 +186,7 @@ export function useCompanionChat() {
        */
       elapsedSince: (turn: number) => {
         const start = scheduleOf(replay.rec).find((st) => st.turn === turn && st.phase === "user")?.at ?? 0;
-        const running = !replay.stopped ? (performance.now() - clock.current.last) * replay.speed : 0;
+        const running = !replay.stopped && !replay.paused ? (performance.now() - clock.current.last) * replay.speed : 0;
         return Math.max(0, clock.current.virtual + running - start) / 1000;
       },
       skip: () => setReplay((r) => (r ? { ...r, shown: finalStep(r.rec), stopped: true } : r)),
