@@ -3,7 +3,7 @@ import { DEFAULT_RISK_CONFIG } from "firstread";
 import { after } from "next/server";
 import { type ChatMessage, JEV_DOWN_HEADER, MAX_MESSAGE_LENGTH, OPENAI_KEY_HEADER } from "@/lib/chat";
 import { COMPANION_MODEL, draftReply } from "@/lib/companion";
-import { guard, guardWithJevDown } from "@/lib/firstread";
+import { guardWithJevDown, liveGuard } from "@/lib/firstread";
 import { chatCapRefusal, clientIp, rateRefusal } from "@/lib/limits";
 import { extractNotes } from "@/lib/notes";
 import { redis } from "@/lib/redis";
@@ -44,6 +44,13 @@ function companionErrorMessage(error: unknown, ourKey: boolean): string {
 }
 
 export async function POST(req: Request) {
+  // "Jev down" needs no Jev key; every other turn does, whoever's OpenAI key it runs on.
+  const jevDown = req.headers.get(JEV_DOWN_HEADER) === "1";
+  const guard = jevDown ? guardWithJevDown : liveGuard();
+  if (!guard) {
+    return Response.json({ error: "Live chat is off: FirstRead's checks aren't configured. The scenarios still play." }, { status: 503 });
+  }
+
   // The visitor's own key if they gave one, else ours (HY-153: typed messages run on our key during
   // judging, capped by the limits below and the OpenAI project's spending limit).
   const ownKey = req.headers.get(OPENAI_KEY_HEADER)?.trim();
@@ -52,7 +59,6 @@ export async function POST(req: Request) {
   if (!apiKey) return Response.json({ error: "Add your OpenAI API key to chat live." }, { status: 401 });
 
   // The client sends only the new message: the history the checks rely on lives on the server.
-  const jevDown = req.headers.get(JEV_DOWN_HEADER) === "1";
   const { id, message }: { id?: unknown; message?: ChatMessage } = await req.json();
   const text =
     message?.role === "user"
@@ -104,7 +110,7 @@ export async function POST(req: Request) {
           text,
           session,
           {
-            guard: jevDown ? guardWithJevDown : guard,
+            guard,
             draft: ({ history, text, notes, signal }) => draftReply({ apiKey, history, text, notes, signal }),
           },
           (check, ms) =>
