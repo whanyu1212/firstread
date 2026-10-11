@@ -7,6 +7,12 @@ import type { ChatData } from "./chat";
 /** A probability as the margin shows it. */
 export const pct = (v: number) => `${Math.round(v * 100)}%`;
 
+/** A failed user check is unknown, not a calm reading. Already-CRISIS turns deliberately skip it. */
+export function assessmentUnavailable(check?: ChatData["check"], audit?: ChatData["audit"]): boolean {
+  if (audit?.shortCircuit === "already-crisis") return false;
+  return check?.ok === false || (audit !== undefined && audit.userSignals === null);
+}
+
 /** How a Jev call failed, said plainly: an outage isn't a slow answer. */
 const FAILED: Record<FailureReason, string> = {
   timeout: "didn't answer in time",
