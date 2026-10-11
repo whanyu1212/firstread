@@ -182,3 +182,9 @@
   .completeIterations .metricCard p:last-child { grid-column: 1 / -1; }
   .completeIterations ol > li + li { margin-top: 0.5rem; }
 }
+
+@media (min-width: 64rem) and (max-height: 700px) {
+  /* Limit wide charts while keeping the whole viewBox visible. Below the readable
+     size floor, let the slide scroll instead of shrinking axes and labels further. */
+  .plotSurface svg { max-height: max(21rem, 46dvh); }
+}
